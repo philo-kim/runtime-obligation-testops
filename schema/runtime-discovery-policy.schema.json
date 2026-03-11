@@ -18,6 +18,33 @@
       "type": "string",
       "minLength": 1
     },
+    "candidateReviewMode": {
+      "type": "string",
+      "enum": [
+        "error",
+        "warning",
+        "off"
+      ]
+    },
+    "codeFilePatterns": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "sourceExtensions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 2,
+        "pattern": "^\\."
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
     "ignorePatterns": {
       "type": "array",
       "items": {
@@ -47,6 +74,47 @@
           "reason": {
             "type": "string",
             "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "sourceOverrides": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "sourceId"
+        ],
+        "properties": {
+          "sourceId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "includePatterns": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "excludePatterns": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "merge",
+              "replace"
+            ]
           }
         },
         "additionalProperties": false

@@ -1,0 +1,45 @@
+{
+  "$schema": "./runtime-discovery-policy.schema.json",
+  "version": "1.0.0",
+  "principle": "runtime-obligation-first",
+  "candidateReviewMode": "warning",
+  "codeFilePatterns": [
+    "**/*.{ts,tsx,js,jsx,dart}"
+  ],
+  "sourceExtensions": [
+    ".ts",
+    ".tsx",
+    ".js",
+    ".jsx",
+    ".dart"
+  ],
+  "ignorePatterns": [
+    "**/.fvm/**",
+    "**/ios/.symlinks/**",
+    "**/generated/**"
+  ],
+  "suppressions": [],
+  "sourceOverrides": [
+    {
+      "sourceId": "client-state",
+      "mode": "replace",
+      "includePatterns": [
+        "lib/presentation/**/*.dart"
+      ]
+    },
+    {
+      "sourceId": "workflow-orchestration",
+      "mode": "replace",
+      "includePatterns": [
+        "lib/core/**/*.dart"
+      ]
+    },
+    {
+      "sourceId": "external-contracts",
+      "mode": "replace",
+      "includePatterns": [
+        "lib/data/**/*.dart"
+      ]
+    }
+  ]
+}

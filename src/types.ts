@@ -110,12 +110,27 @@ export interface RuntimeDiscoverySuppression {
   reason: string;
 }
 
+export type RuntimeDiscoveryCandidateReviewMode = "error" | "warning" | "off";
+
+export type RuntimeDiscoverySourceOverrideMode = "merge" | "replace";
+
+export interface RuntimeDiscoverySourceOverride {
+  sourceId: string;
+  includePatterns?: string[];
+  excludePatterns?: string[];
+  mode?: RuntimeDiscoverySourceOverrideMode;
+}
+
 export interface RuntimeDiscoveryPolicy {
   $schema?: string;
   version: string;
   principle: string;
+  candidateReviewMode?: RuntimeDiscoveryCandidateReviewMode;
+  codeFilePatterns?: string[];
+  sourceExtensions?: string[];
   ignorePatterns?: string[];
   suppressions?: RuntimeDiscoverySuppression[];
+  sourceOverrides?: RuntimeDiscoverySourceOverride[];
 }
 
 export interface ProjectModel {

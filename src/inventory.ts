@@ -2,7 +2,12 @@ import { existsSync, lstatSync, readFileSync } from "node:fs";
 import path from "node:path";
 import fg from "fast-glob";
 import { expandPatterns, relativeToRoot, toPosix } from "./fs-utils.js";
-import type { RuntimeDiscoveryPolicy, RuntimeInventory, RuntimeInventorySource } from "./types.js";
+import type {
+  RuntimeDiscoveryPolicy,
+  RuntimeDiscoverySourceOverride,
+  RuntimeInventory,
+  RuntimeInventorySource,
+} from "./types.js";
 
 interface DetectionRule {
   id: string;
@@ -43,9 +48,9 @@ const NON_TEST_IGNORE_PATTERNS = [
   "**/coverage/**",
 ];
 
-const CODE_FILE_PATTERNS = ["**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}"];
+const DEFAULT_CODE_FILE_PATTERNS = ["**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}"];
 const PROPERTY_TEST_PATTERNS = ["**/property/**/*.test.*", "**/*.property.test.*"];
-const SOURCE_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".mts", ".cts", ".mjs", ".cjs"];
+const DEFAULT_SOURCE_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".mts", ".cts", ".mjs", ".cjs"];
 
 const DETECTION_RULES: DetectionRule[] = [
   {
@@ -170,6 +175,10 @@ const DETECTION_RULES: DetectionRule[] = [
   },
 ];
 
+export function getDiscoveryRuleIds(): string[] {
+  return DETECTION_RULES.map((rule) => rule.id);
+}
+
 function unique(values: string[]): string[] {
   return [...new Set(values)].sort();
 }
@@ -220,9 +229,31 @@ function makeSource(rule: DetectionRule, matches: string[]): RuntimeInventorySou
   };
 }
 
-function expandCodeFiles(repoRoot: string, ignorePatterns: string[]): string[] {
+function resolveCodeFilePatterns(options?: {
+  discoveryPolicy?: RuntimeDiscoveryPolicy;
+}): string[] {
+  return options?.discoveryPolicy?.codeFilePatterns?.length
+    ? options.discoveryPolicy.codeFilePatterns
+    : DEFAULT_CODE_FILE_PATTERNS;
+}
+
+function resolveSourceExtensions(options?: {
+  discoveryPolicy?: RuntimeDiscoveryPolicy;
+}): string[] {
+  return options?.discoveryPolicy?.sourceExtensions?.length
+    ? options.discoveryPolicy.sourceExtensions
+    : DEFAULT_SOURCE_EXTENSIONS;
+}
+
+function expandCodeFiles(
+  repoRoot: string,
+  ignorePatterns: string[],
+  options?: {
+    discoveryPolicy?: RuntimeDiscoveryPolicy;
+  },
+): string[] {
   return unique(
-    fg.sync(CODE_FILE_PATTERNS, {
+    fg.sync(resolveCodeFilePatterns(options), {
       cwd: repoRoot,
       ignore: ignorePatterns,
       dot: true,
@@ -318,6 +349,7 @@ function resolveImportTarget(
   repoRoot: string,
   importer: string,
   specifier: string,
+  sourceExtensions: string[],
 ): string | undefined {
   let basePath: string | undefined;
 
@@ -335,8 +367,8 @@ function resolveImportTarget(
 
   const candidates = [
     basePath,
-    ...SOURCE_EXTENSIONS.map((extension) => `${basePath}${extension}`),
-    ...SOURCE_EXTENSIONS.map((extension) => path.join(basePath, `index${extension}`)),
+    ...sourceExtensions.map((extension) => `${basePath}${extension}`),
+    ...sourceExtensions.map((extension) => path.join(basePath, `index${extension}`)),
   ];
 
   for (const candidate of candidates) {
@@ -348,12 +380,48 @@ function resolveImportTarget(
   return undefined;
 }
 
+function sourceOverrideFor(
+  discoveryPolicy: RuntimeDiscoveryPolicy | undefined,
+  sourceId: string,
+): RuntimeDiscoverySourceOverride | undefined {
+  return discoveryPolicy?.sourceOverrides?.find((override) => override.sourceId === sourceId);
+}
+
+function applySourceOverride(
+  repoRoot: string,
+  baseMatches: string[],
+  ignorePatterns: string[],
+  override?: RuntimeDiscoverySourceOverride,
+): string[] {
+  if (!override) {
+    return unique(baseMatches);
+  }
+
+  const overrideExcludes = override.excludePatterns ?? [];
+  const includeMatches =
+    override.includePatterns && override.includePatterns.length > 0
+      ? expandPatterns(repoRoot, override.includePatterns, [...ignorePatterns, ...overrideExcludes])
+      : [];
+  const excludeMatches =
+    overrideExcludes.length > 0 ? expandPatterns(repoRoot, overrideExcludes, ignorePatterns) : [];
+  const excluded = new Set(excludeMatches);
+  const candidateMatches =
+    override.mode === "replace"
+      ? includeMatches
+      : unique([...baseMatches, ...includeMatches]);
+
+  return candidateMatches.filter((filePath) => !excluded.has(filePath));
+}
+
 function detectClientStateSources(
   repoRoot: string,
   ignorePatterns: string[],
   claimedFiles: Set<string>,
+  options?: {
+    discoveryPolicy?: RuntimeDiscoveryPolicy;
+  },
 ): string[] {
-  const codeFiles = expandCodeFiles(repoRoot, ignorePatterns);
+  const codeFiles = expandCodeFiles(repoRoot, ignorePatterns, options);
   const matches = codeFiles.filter((filePath) => {
     if (claimedFiles.has(filePath)) {
       return false;
@@ -363,15 +431,23 @@ function detectClientStateSources(
     return isLikelyClientStateFile(filePath, source);
   });
 
-  return unique(matches);
+  return applySourceOverride(
+    repoRoot,
+    unique(matches),
+    ignorePatterns,
+    sourceOverrideFor(options?.discoveryPolicy, "client-state"),
+  );
 }
 
 function detectExternalSources(
   repoRoot: string,
   ignorePatterns: string[],
   claimedFiles: Set<string>,
+  options?: {
+    discoveryPolicy?: RuntimeDiscoveryPolicy;
+  },
 ): string[] {
-  const codeFiles = expandCodeFiles(repoRoot, ignorePatterns);
+  const codeFiles = expandCodeFiles(repoRoot, ignorePatterns, options);
   const matches = codeFiles.filter((filePath) => {
     if (claimedFiles.has(filePath)) {
       return false;
@@ -381,13 +457,21 @@ function detectExternalSources(
     return isLikelyExternalFile(filePath, source);
   });
 
-  return unique(matches);
+  return applySourceOverride(
+    repoRoot,
+    unique(matches),
+    ignorePatterns,
+    sourceOverrideFor(options?.discoveryPolicy, "external-contracts"),
+  );
 }
 
 function detectWorkflowSources(
   repoRoot: string,
   ignorePatterns: string[],
   claimedFiles: Set<string>,
+  options?: {
+    discoveryPolicy?: RuntimeDiscoveryPolicy;
+  },
 ): string[] {
   const matches = expandPatterns(
     repoRoot,
@@ -395,13 +479,18 @@ function detectWorkflowSources(
       "**/services/**/*.*",
       "**/*service*.*",
       "**/usecases/**/*.*",
-      "**/workflows/**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}",
+      "**/workflows/**/*.*",
       "**/*orchestr*.*",
     ],
     ignorePatterns,
   ).filter((filePath) => !claimedFiles.has(filePath) && isLikelyWorkflowFile(filePath));
 
-  return unique(matches);
+  return applySourceOverride(
+    repoRoot,
+    unique(matches),
+    ignorePatterns,
+    sourceOverrideFor(options?.discoveryPolicy, "workflow-orchestration"),
+  );
 }
 
 function detectInvariantSources(
@@ -411,6 +500,7 @@ function detectInvariantSources(
     discoveryPolicy?: RuntimeDiscoveryPolicy;
   },
 ): string[] {
+  const sourceExtensions = resolveSourceExtensions(options);
   const propertyTests = unique(
     fg.sync(PROPERTY_TEST_PATTERNS, {
       cwd: repoRoot,
@@ -429,7 +519,7 @@ function detectInvariantSources(
     }
 
     for (const specifier of extractImportSpecifiers(source)) {
-      const resolved = resolveImportTarget(repoRoot, propertyTest, specifier);
+      const resolved = resolveImportTarget(repoRoot, propertyTest, specifier, sourceExtensions);
       if (!resolved || /(^|\/)(test|tests)\//.test(resolved)) {
         continue;
       }
@@ -437,7 +527,12 @@ function detectInvariantSources(
     }
   }
 
-  return unique([...imports]);
+  return applySourceOverride(
+    repoRoot,
+    unique([...imports]),
+    discoveryIgnores(options),
+    sourceOverrideFor(options?.discoveryPolicy, "runtime-invariants"),
+  );
 }
 
 export function scanRuntimeInventory(
@@ -456,7 +551,12 @@ export function scanRuntimeInventory(
       continue;
     }
 
-    const matches = expandPatterns(repoRoot, rule.patterns, ignorePatterns);
+    const matches = applySourceOverride(
+      repoRoot,
+      expandPatterns(repoRoot, rule.patterns, ignorePatterns),
+      ignorePatterns,
+      sourceOverrideFor(options?.discoveryPolicy, rule.id),
+    );
     const source = makeSource(rule, matches);
     if (!source) {
       continue;
@@ -469,7 +569,7 @@ export function scanRuntimeInventory(
   }
 
   const clientStateRule = DETECTION_RULES.find((rule) => rule.id === "client-state");
-  const clientStateMatches = detectClientStateSources(repoRoot, ignorePatterns, claimedFiles);
+  const clientStateMatches = detectClientStateSources(repoRoot, ignorePatterns, claimedFiles, options);
   if (clientStateRule) {
     const source = makeSource(clientStateRule, clientStateMatches);
     if (source) {
@@ -481,7 +581,7 @@ export function scanRuntimeInventory(
   }
 
   const externalRule = DETECTION_RULES.find((rule) => rule.id === "external-contracts");
-  const externalMatches = detectExternalSources(repoRoot, ignorePatterns, claimedFiles);
+  const externalMatches = detectExternalSources(repoRoot, ignorePatterns, claimedFiles, options);
   if (externalRule) {
     const source = makeSource(externalRule, externalMatches);
     if (source) {
@@ -493,7 +593,7 @@ export function scanRuntimeInventory(
   }
 
   const workflowRule = DETECTION_RULES.find((rule) => rule.id === "workflow-orchestration");
-  const workflowMatches = detectWorkflowSources(repoRoot, ignorePatterns, claimedFiles);
+  const workflowMatches = detectWorkflowSources(repoRoot, ignorePatterns, claimedFiles, options);
   if (workflowRule) {
     const source = makeSource(workflowRule, workflowMatches);
     if (source) {

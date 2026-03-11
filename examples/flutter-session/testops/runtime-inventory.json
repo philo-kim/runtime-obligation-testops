@@ -1,0 +1,77 @@
+{
+  "$schema": "./runtime-inventory.schema.json",
+  "version": "1.0.0",
+  "principle": "runtime-obligation-first",
+  "sourceKinds": [
+    "auth",
+    "ui-state",
+    "workflow"
+  ],
+  "sources": [
+    {
+      "id": "auth-entry",
+      "description": "Session bootstrap and route access decisions.",
+      "kind": "auth",
+      "sourcePatterns": [
+        "lib/core/startup/startup_coordinator.dart",
+        "lib/core/navigation/route_resolver.dart"
+      ],
+      "events": [
+        "The session starts and an access decision is derived."
+      ],
+      "expectedEvidence": [
+        "state_transition",
+        "derived_view"
+      ],
+      "expectedOutcomeClasses": [
+        "success",
+        "failure"
+      ],
+      "surfaceHint": "auth-access",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "auth-client-state",
+      "description": "The authentication view state changes based on session bootstrap results.",
+      "kind": "ui-state",
+      "sourcePatterns": [
+        "lib/presentation/auth/auth_viewmodel.dart",
+        "lib/presentation/auth/terms_viewmodel.dart"
+      ],
+      "events": [
+        "The auth UI transitions through loading, accepted, and rejected states."
+      ],
+      "expectedEvidence": [
+        "state_transition",
+        "derived_view"
+      ],
+      "expectedOutcomeClasses": [
+        "success",
+        "failure"
+      ],
+      "surfaceHint": "client-state",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "auth-workflow",
+      "description": "Session normalization coordinates startup, terms acceptance, and route resolution.",
+      "kind": "workflow",
+      "sourcePatterns": [
+        "lib/core/session/session_bootstrap_service.dart"
+      ],
+      "events": [
+        "The app coordinates session bootstrap into a concrete route decision."
+      ],
+      "expectedEvidence": [
+        "derived_view",
+        "state_transition"
+      ],
+      "expectedOutcomeClasses": [
+        "success",
+        "failure"
+      ],
+      "surfaceHint": "workflow-orchestration",
+      "minimumFidelity": "simulated"
+    }
+  ]
+}

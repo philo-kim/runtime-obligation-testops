@@ -14,9 +14,10 @@ When changing this repository:
    - observability
    - traceability
 2. Keep discovery, inventory, surface, control-plane, and fidelity artifacts aligned.
-3. Keep schemas and validators framework-agnostic. Runner-specific behavior belongs in adapters.
+3. Keep schemas and validators framework-agnostic. Runner-specific behavior belongs in adapters, and repo-local behavior belongs in policy files.
 4. If templates change, update docs and tests in the same change.
-5. If the CLI output changes, update the example files and the README.
+5. If discovery policy semantics change, update the examples and adoption guidance in the same change.
+6. If the CLI output changes, update the example files and the README.
 
 Required commands before finishing:
 

@@ -22,14 +22,20 @@ For every runtime change:
 
 1. identify the changed runtime source
 2. compare the change against discovered runtime candidates
-3. determine whether the reviewed denominator changed
-4. determine which surface owns the change
-5. update or add obligations
-6. update owner tests and `runtime-obligations` annotations
-7. run `rotops impact` if the blast radius is unclear
-8. run `rotops validate`
+3. review repo-local policy if discovery is too noisy or too blind for that runtime slice
+4. determine whether the reviewed denominator changed
+5. determine which surface owns the change
+6. update or add obligations
+7. update owner tests and `runtime-obligations` annotations
+8. run `rotops impact` if the blast radius is unclear
+9. run `rotops validate`
 
 If discovery finds a candidate the reviewed model does not account for, the agent must not hide it by editing tests alone.
+The agent must either:
+
+- accept it into the reviewed model
+- suppress it with an explicit repo-local reason
+- or keep discovery in advisory mode until the repo-local policy is ready
 
 ## What agents must never do
 
@@ -55,3 +61,5 @@ Without this system, agents can easily:
 - confuse local implementation detail with runtime proof
 
 With this system, the agent has a concrete control loop instead of a vague testing heuristic.
+
+That is why the package ships both machine-readable policy files and human-readable operating guidance.

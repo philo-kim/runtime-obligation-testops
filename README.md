@@ -84,6 +84,35 @@ The package manages five connected artifacts:
 The first artifact manages discovery.
 The other four artifacts are the reviewed runtime model.
 
+## Universal core, repo-local policy
+
+This package is intentionally split into two layers:
+
+- a universal control core
+- repo-local operating policy
+
+The universal core gives every project the same runtime-governance model:
+
+- sources
+- surfaces
+- obligations
+- outcomes
+- evidence
+- fidelity
+- owner tests
+- traceability
+
+Repo-local policy tells the core how this specific codebase should be interpreted:
+
+- which files are even eligible for discovery
+- which generated or vendor paths must be ignored
+- which candidate matches are reviewed suppressions
+- which runtime categories need explicit source overrides
+- whether discovered-vs-reviewed drift should fail CI now or only warn
+
+That split matters.
+It lets the package stay universal without pretending that every codebase emits the same scanner signals.
+
 ## The key design choice: discovered vs reviewed
 
 The package keeps two layers of truth in tension:
@@ -97,6 +126,28 @@ If you manage only the reviewed model, teams can accidentally leave real runtime
 If you trust only discovery, you get noisy heuristics instead of an operable system.
 
 `rotops validate` exists to stop those two layers from drifting apart silently.
+
+## What is universal and what is heuristic
+
+The package is strongest at the control layer:
+
+- `validate`
+- `impact`
+- the reviewed runtime model
+- fidelity policy
+- owner-test traceability
+
+Discovery is intentionally a bootstrap engine, not an oracle.
+
+That means:
+
+- the package can be used in repos that do not look like the example repo
+- teams can start with a hand-authored reviewed model
+- discovery can begin in advisory mode
+- repo-local policy can gradually tighten discovery quality over time
+
+This is the intended operating model.
+The package is not promising that raw scanner output is universally correct on day one.
 
 ## Where this fits in a real test strategy
 
@@ -154,6 +205,19 @@ npx rotops export vitest-workspace --out vitest.runtime.workspace.ts
 
 If your repo uses non-default paths such as `testing/` instead of `testops/`, keep the artifacts where they are and wrap the CLI with project-local scripts.
 
+## Recommended bootstrap strategy
+
+Do not assume every repo should start in strict discovery mode.
+
+The safe sequence is:
+
+1. start with a reviewed model for one important runtime slice
+2. use `rotops validate` and `rotops impact` as the first CI gate
+3. keep discovery in `warning` mode while repo-local policy is still being shaped
+4. move discovery drift to `error` once the scanner is trustworthy for that repo
+
+That rollout works better than pretending heuristics are already perfect.
+
 ## Recommended operating loop
 
 1. Run `inventory scan` to discover candidate runtime sources.
@@ -176,6 +240,22 @@ If your repo uses non-default paths such as `testing/` instead of `testops/`, ke
 - fidelity does not regress below policy
 - discovered runtime files are not missing from the reviewed denominator
 
+## AI operating model
+
+This package is designed for AI coding agents as much as for humans.
+
+The expected loop is:
+
+1. detect changed runtime files
+2. run `rotops impact`
+3. compare discovered candidates to the reviewed model
+4. accept, suppress, or continue reviewing candidate drift through repo-local policy
+5. update obligations and owner tests
+6. rerun `rotops validate`
+
+The control system exists so an agent cannot “solve” testing by only adding lines of test code.
+The agent has to maintain the runtime model too.
+
 ## How to use this in practice
 
 Use it when you want a repo to answer, concretely:
@@ -189,6 +269,17 @@ Use it when you want a repo to answer, concretely:
 
 Do not use it as a cosmetic wrapper around existing folder labels.
 If the runtime denominator is not reviewed, the system is being used incorrectly.
+
+## Bootstrap maturity
+
+Different parts of the package mature at different speeds in different stacks.
+
+- control plane validation is generally portable
+- impact analysis is generally portable
+- reviewed-model governance is generally portable
+- raw discovery quality depends on repo-local policy and codebase signals
+
+That is why this package exposes policy files instead of hiding heuristics inside the binary.
 
 ## Public repo readiness
 
@@ -211,12 +302,16 @@ Start here:
 - [Principles](./docs/principles.md)
 - [Runtime Model](./docs/model.md)
 - [Adoption Guide](./docs/adoption.md)
+- [Repo-Local Policy](./docs/repo-local-policy.md)
+- [Bootstrap Maturity](./docs/bootstrap-maturity.md)
 - [Completeness Workflow](./docs/completeness-workflow.md)
 - [AI Agent Integration](./docs/ai-agent-integration.md)
 
 ## Example
 
 The package includes a concrete product example under [examples/apppulse](./examples/apppulse).
+
+It also includes a smaller staged-adoption example for a non-JS runtime slice under [examples/flutter-session](./examples/flutter-session).
 
 That example matters because this package was not invented from a blank framework template.
 It was extracted from a real product that exposed the exact failure mode this system is meant to prevent.

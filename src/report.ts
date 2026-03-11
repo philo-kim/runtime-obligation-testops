@@ -4,6 +4,8 @@ import { writeTextFile } from "./fs-utils.js";
 import type { ValidationSummary } from "./types.js";
 
 export function renderMarkdown(summary: ValidationSummary): string {
+  const errorCount = summary.issues.filter((issue) => issue.level === "error").length;
+  const warningCount = summary.issues.filter((issue) => issue.level === "warning").length;
   const lines: string[] = [];
   lines.push("# Runtime Control Plane Report");
   lines.push("");
@@ -21,6 +23,8 @@ export function renderMarkdown(summary: ValidationSummary): string {
   if (summary.discoveredFiles !== undefined) {
     lines.push(`- Discovered Files: ${summary.discoveredFiles}`);
   }
+  lines.push(`- Errors: ${errorCount}`);
+  lines.push(`- Warnings: ${warningCount}`);
   lines.push(`- Issues: ${summary.issues.length}`);
   lines.push("");
   lines.push("| Surface | Sources | Tests | Obligations | Uncovered | Unreferenced Tests |");

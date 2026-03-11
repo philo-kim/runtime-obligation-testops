@@ -56,8 +56,12 @@ function makeDiscoveryPolicy(): RuntimeDiscoveryPolicy {
   return {
     version: "1.0.0",
     principle: "runtime-obligation-first",
+    candidateReviewMode: "error",
+    codeFilePatterns: ["**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}"],
+    sourceExtensions: [".ts", ".tsx", ".js", ".jsx", ".mts", ".cts", ".mjs", ".cjs"],
     ignorePatterns: [],
     suppressions: [],
+    sourceOverrides: [],
   };
 }
 
@@ -202,6 +206,62 @@ describe("validateControlPlane", () => {
       "Discovered runtime file src/lib/prisma.ts is not represented in the declared inventory",
     );
   });
+
+  it("downgrades discovered-vs-reviewed drift to a warning when candidate review mode is advisory", () => {
+    const root = makeTempDir();
+    writeProjectFile(root, "src/lib/prisma.ts", "export const prisma = true;\n");
+    writeProjectFile(root, "prisma/schema.prisma", "model Example { id String @id }\n");
+    writeProjectFile(root, "src/entry.ts", "export const entry = true;\n");
+    writeProjectFile(
+      root,
+      "test/entry.test.ts",
+      "// runtime-obligations: request-entry.success\nexport const testFile = true;\n",
+    );
+
+    const summary = validateControlPlane(makeControlPlane(), root, {
+      inventory: makeInventory(),
+      surfaceCatalog: deriveSurfaceCatalog(makeInventory()),
+      discoveryPolicy: {
+        ...makeDiscoveryPolicy(),
+        candidateReviewMode: "warning",
+      },
+    });
+
+    expect(summary.issues).toContainEqual({
+      level: "warning",
+      message: "Discovered runtime file src/lib/prisma.ts is not represented in the declared inventory",
+    });
+  });
+
+  it("fails when discovery policy overrides reference unknown runtime source ids", () => {
+    const root = makeTempDir();
+    writeProjectFile(root, "src/entry.ts", "export const entry = true;\n");
+    writeProjectFile(
+      root,
+      "test/entry.test.ts",
+      "// runtime-obligations: request-entry.success\nexport const testFile = true;\n",
+    );
+
+    const summary = validateControlPlane(makeControlPlane(), root, {
+      inventory: makeInventory(),
+      surfaceCatalog: deriveSurfaceCatalog(makeInventory()),
+      discoveryPolicy: {
+        ...makeDiscoveryPolicy(),
+        sourceOverrides: [
+          {
+            sourceId: "unknown-runtime-source",
+            includePatterns: ["lib/**/*.dart"],
+            mode: "replace",
+          },
+        ],
+      },
+    });
+
+    expect(summary.issues).toContainEqual({
+      level: "error",
+      message: "Discovery policy source override references unknown runtime source unknown-runtime-source",
+    });
+  });
 });
 
 describe("deriveSurfaceCatalog", () => {
@@ -327,6 +387,88 @@ describe("scanRuntimeInventory", () => {
     expect(workflow?.sourcePatterns).toEqual(["src/server/services/ranking-service.ts"]);
     expect(external?.sourcePatterns).toEqual(["src/server/services/google-play-service.ts"]);
     expect(invariants?.sourcePatterns).toEqual(["src/lib/utils.ts"]);
+  });
+
+  it("supports repo-local source overrides and custom code patterns for non-JS projects", () => {
+    const root = makeTempDir();
+    writeProjectFile(
+      root,
+      "lib/presentation/auth/auth_viewmodel.dart",
+      "class AuthViewModel { bool loading = false; }\n",
+    );
+    writeProjectFile(
+      root,
+      "lib/core/startup/startup_coordinator.dart",
+      "class StartupCoordinator { Future<void> run() async {} }\n",
+    );
+    writeProjectFile(
+      root,
+      "lib/data/network/api_client.dart",
+      "class ApiClient { Future<void> get() async {} }\n",
+    );
+    writeProjectFile(
+      root,
+      ".fvm/flutter_sdk/lib/src/ignored.dart",
+      "class Ignored {}\n",
+    );
+    writeProjectFile(
+      root,
+      "docs/archive/legacy.tsx",
+      `"use client"; export default function Legacy() { return <div />; }\n`,
+    );
+
+    const inventory = scanRuntimeInventory(root, {
+      discoveryPolicy: {
+        version: "1.0.0",
+        principle: "runtime-obligation-first",
+        candidateReviewMode: "warning",
+        codeFilePatterns: ["**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs,dart}"],
+        sourceExtensions: [
+          ".ts",
+          ".tsx",
+          ".js",
+          ".jsx",
+          ".mts",
+          ".cts",
+          ".mjs",
+          ".cjs",
+          ".dart",
+        ],
+        ignorePatterns: ["**/.fvm/**", "**/ios/.symlinks/**"],
+        suppressions: [],
+        sourceOverrides: [
+          {
+            sourceId: "client-state",
+            mode: "replace",
+            includePatterns: ["lib/presentation/**/*.dart"],
+          },
+          {
+            sourceId: "workflow-orchestration",
+            mode: "replace",
+            includePatterns: ["lib/core/**/*.dart"],
+          },
+          {
+            sourceId: "external-contracts",
+            mode: "replace",
+            includePatterns: ["lib/data/**/*.dart"],
+          },
+        ],
+      },
+    });
+
+    const clientState = inventory.sources.find((source) => source.id === "client-state");
+    const workflow = inventory.sources.find((source) => source.id === "workflow-orchestration");
+    const external = inventory.sources.find((source) => source.id === "external-contracts");
+
+    expect(clientState?.sourcePatterns).toEqual(["lib/presentation/auth/auth_viewmodel.dart"]);
+    expect(workflow?.sourcePatterns).toEqual(["lib/core/startup/startup_coordinator.dart"]);
+    expect(external?.sourcePatterns).toEqual(["lib/data/network/api_client.dart"]);
+    expect(inventory.sources.flatMap((source) => source.sourcePatterns)).not.toContain(
+      ".fvm/flutter_sdk/lib/src/ignored.dart",
+    );
+    expect(inventory.sources.flatMap((source) => source.sourcePatterns)).not.toContain(
+      "docs/archive/legacy.tsx",
+    );
   });
 });
 

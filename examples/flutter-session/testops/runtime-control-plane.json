@@ -1,0 +1,137 @@
+{
+  "$schema": "./runtime-control-plane.schema.json",
+  "version": "1.0.0",
+  "principle": "runtime-obligation-first",
+  "evidenceKinds": [
+    "response",
+    "redirect",
+    "state_transition",
+    "storage_write",
+    "storage_read",
+    "job_enqueue",
+    "job_process",
+    "external_call",
+    "derived_view"
+  ],
+  "fidelityLevels": [
+    "isolated",
+    "simulated",
+    "contract",
+    "real-dependency",
+    "full-system"
+  ],
+  "surfaces": [
+    {
+      "id": "auth-access",
+      "description": "Session bootstrap and access decisions.",
+      "sourcePatterns": [
+        "lib/core/startup/startup_coordinator.dart",
+        "lib/core/navigation/route_resolver.dart"
+      ],
+      "testPatterns": [
+        "test/core/startup/startup_coordinator_test.dart",
+        "test/core/navigation/route_resolver_test.dart"
+      ]
+    },
+    {
+      "id": "client-state",
+      "description": "Authentication UI state transitions.",
+      "sourcePatterns": [
+        "lib/presentation/auth/auth_viewmodel.dart",
+        "lib/presentation/auth/terms_viewmodel.dart"
+      ],
+      "testPatterns": [
+        "test/presentation/auth/auth_viewmodel_test.dart",
+        "test/presentation/auth/terms_viewmodel_test.dart"
+      ]
+    },
+    {
+      "id": "workflow-orchestration",
+      "description": "Session bootstrap orchestration inside the product boundary.",
+      "sourcePatterns": [
+        "lib/core/session/session_bootstrap_service.dart"
+      ],
+      "testPatterns": [
+        "test/core/session/session_consistency_regression_test.dart"
+      ]
+    }
+  ],
+  "obligations": [
+    {
+      "id": "auth-access.session-bootstrap-normalization",
+      "surface": "auth-access",
+      "sourcePatterns": [
+        "lib/core/startup/startup_coordinator.dart",
+        "lib/core/navigation/route_resolver.dart"
+      ],
+      "event": "The app normalizes startup state into an access decision.",
+      "outcomes": [
+        "A valid session continues to the authenticated route.",
+        "An invalid or absent session falls back to the sign-in route."
+      ],
+      "outcomeClasses": [
+        "success",
+        "failure"
+      ],
+      "evidence": [
+        "state_transition",
+        "derived_view"
+      ],
+      "fidelity": "simulated",
+      "ownerTests": [
+        "test/core/startup/startup_coordinator_test.dart",
+        "test/core/navigation/route_resolver_test.dart"
+      ]
+    },
+    {
+      "id": "client-state.auth-session-presentation",
+      "surface": "client-state",
+      "sourcePatterns": [
+        "lib/presentation/auth/auth_viewmodel.dart",
+        "lib/presentation/auth/terms_viewmodel.dart"
+      ],
+      "event": "The auth presentation layer responds to accepted, rejected, and pending session states.",
+      "outcomes": [
+        "Accepted state presents the authenticated route.",
+        "Rejected state presents recovery or sign-in UI."
+      ],
+      "outcomeClasses": [
+        "success",
+        "failure"
+      ],
+      "evidence": [
+        "state_transition",
+        "derived_view"
+      ],
+      "fidelity": "simulated",
+      "ownerTests": [
+        "test/presentation/auth/auth_viewmodel_test.dart",
+        "test/presentation/auth/terms_viewmodel_test.dart"
+      ]
+    },
+    {
+      "id": "workflow-orchestration.session-bootstrap-sequence",
+      "surface": "workflow-orchestration",
+      "sourcePatterns": [
+        "lib/core/session/session_bootstrap_service.dart"
+      ],
+      "event": "Startup coordination completes a single session-bootstrap workflow.",
+      "outcomes": [
+        "The workflow resolves to one consistent route decision.",
+        "Conflicting session signals fail closed into recovery."
+      ],
+      "outcomeClasses": [
+        "success",
+        "failure"
+      ],
+      "evidence": [
+        "state_transition",
+        "derived_view"
+      ],
+      "fidelity": "simulated",
+      "ownerTests": [
+        "test/core/session/session_consistency_regression_test.dart"
+      ]
+    }
+  ]
+}

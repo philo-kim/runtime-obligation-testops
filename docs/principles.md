@@ -111,3 +111,6 @@ That is why this package keeps both:
 - `reviewed runtime model`
 
 The validator compares them so the team cannot silently drift into a smaller runtime denominator than the product actually has.
+
+That is also why repo-local policy exists.
+The core model is universal, but runtime discovery must remain teachable by each repository.

@@ -23,6 +23,7 @@ AppPulse is included as a case study of the original failure mode, not as a toy 
 ## What the example demonstrates
 
 - discovery is reviewed instead of blindly trusted
+- discovery drift is enforced in CI once the repo-local policy is stable
 - the runtime denominator is explicit
 - runtime surfaces are project-specific, not fixed by the package
 - obligations own observable evidence and owner tests

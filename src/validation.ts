@@ -2,7 +2,7 @@ import path from "node:path";
 import { existsSync, readFileSync } from "node:fs";
 import { obligationMeetsFidelity, resolveMinimumFidelity } from "./fidelity.js";
 import { expandPatterns, parseRuntimeObligationsAnnotation } from "./fs-utils.js";
-import { scanRuntimeInventory } from "./inventory.js";
+import { getDiscoveryRuleIds, scanRuntimeInventory } from "./inventory.js";
 import {
   validateControlPlaneShape,
   validateDiscoveryPolicyShape,
@@ -67,6 +67,42 @@ function uniqueIdIssues(
   }
 }
 
+function validateDiscoveryPolicySemantics(
+  issues: ValidationIssue[],
+  discoveryPolicy?: RuntimeDiscoveryPolicy,
+): void {
+  if (!discoveryPolicy?.sourceOverrides?.length) {
+    return;
+  }
+
+  const knownSourceIds = new Set(getDiscoveryRuleIds());
+  const seen = new Set<string>();
+
+  for (const override of discoveryPolicy.sourceOverrides) {
+    if (!knownSourceIds.has(override.sourceId)) {
+      issues.push({
+        level: "error",
+        message: `Discovery policy source override references unknown runtime source ${override.sourceId}`,
+      });
+    }
+
+    if (seen.has(override.sourceId)) {
+      issues.push({
+        level: "error",
+        message: `Discovery policy defines multiple overrides for runtime source ${override.sourceId}`,
+      });
+    }
+    seen.add(override.sourceId);
+
+    if (override.mode === "replace" && (!override.includePatterns || override.includePatterns.length === 0)) {
+      issues.push({
+        level: "warning",
+        message: `Discovery policy override for ${override.sourceId} uses replace mode without includePatterns`,
+      });
+    }
+  }
+}
+
 function mapFilesById<T extends { id: string; sourcePatterns: string[] }>(
   repoRoot: string,
   items: T[],
@@ -108,6 +144,19 @@ function discoveryPolicyIgnores(discoveryPolicy?: RuntimeDiscoveryPolicy): strin
     ...(discoveryPolicy?.ignorePatterns ?? []),
     ...(discoveryPolicy?.suppressions ?? []).flatMap((suppression) => suppression.filePatterns),
   ];
+}
+
+function discoveredCandidateIssueLevel(
+  discoveryPolicy?: RuntimeDiscoveryPolicy,
+): "error" | "warning" | undefined {
+  switch (discoveryPolicy?.candidateReviewMode) {
+    case "off":
+      return undefined;
+    case "warning":
+      return "warning";
+    default:
+      return "error";
+  }
 }
 
 function overlap(left: string[], right: string[]): string[] {
@@ -240,6 +289,7 @@ export function validateControlPlane(
       "Discovery policy schema violation",
       validateDiscoveryPolicyShape(discoveryPolicy),
     );
+    validateDiscoveryPolicySemantics(issues, discoveryPolicy);
   }
   if (discoveredInventory) {
     pushSchemaIssues(
@@ -422,11 +472,15 @@ export function validateControlPlane(
 
   if (inventory && discoveredInventoryGrouped) {
     const declaredInventoryFiles = new Set(union([...inventoryFilesById.values()]));
+    const issueLevel = discoveredCandidateIssueLevel(discoveryPolicy);
 
     for (const file of discoveredInventoryGrouped.sourcesByFile.keys()) {
       if (!declaredInventoryFiles.has(file)) {
+        if (!issueLevel) {
+          continue;
+        }
         issues.push({
-          level: "error",
+          level: issueLevel,
           message: `Discovered runtime file ${file} is not represented in the declared inventory`,
         });
       }
@@ -732,6 +786,9 @@ export function validateControlPlane(
 }
 
 export function printSummary(summary: ValidationSummary): void {
+  const errorCount = summary.issues.filter((issue) => issue.level === "error").length;
+  const warningCount = summary.issues.filter((issue) => issue.level === "warning").length;
+
   console.log(`Runtime control plane ${summary.version}`);
   if (summary.inventorySources !== undefined) {
     console.log(`- inventory sources: ${summary.inventorySources}`);
@@ -753,9 +810,12 @@ export function printSummary(summary: ValidationSummary): void {
   }
 
   if (summary.issues.length === 0) {
+    console.log("- issues: 0");
     return;
   }
 
+  console.log(`- errors: ${errorCount}`);
+  console.log(`- warnings: ${warningCount}`);
   console.log("");
   for (const issue of summary.issues) {
     console.log(`[${issue.level}] ${issue.message}`);

@@ -49,12 +49,19 @@ Discovery policy defines how the scanner is allowed to behave.
 
 Typical uses:
 
+- set discovered-vs-reviewed drift handling to `error`, `warning`, or `off`
+- define the file universe the scanner is allowed to inspect
+- extend source extensions beyond the default JS/TS set
 - ignore tests and generated code
 - suppress reviewed false positives
+- override specific runtime-source categories with repo-local include or exclude patterns
 - keep the discovered candidate set stable in CI
 
 This file exists because discovery is useful but imperfect.
 It lets the team control heuristics without mutating the reviewed denominator just to get a green build.
+
+That makes discovery policy the main portability layer of the package.
+The core model stays universal while each repo teaches discovery how its runtime is actually expressed.
 
 ## Runtime surface
 

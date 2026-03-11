@@ -33,7 +33,19 @@ If your team only wants a prettier test folder structure, this package is the wr
 
 ## The adoption sequence
 
-### 1. Discover candidate runtime sources
+### 1. Decide how strict discovery should be initially
+
+Set `runtime-discovery-policy.json` first.
+
+In many repos, the right initial setting is:
+
+- `candidateReviewMode: "warning"`
+- explicit `ignorePatterns` for generated or vendored paths
+- targeted `sourceOverrides` for categories the generic scanner cannot infer well yet
+
+Strict discovery is a rollout goal, not a prerequisite.
+
+### 2. Discover candidate runtime sources
 
 ```bash
 npx rotops inventory scan
@@ -42,12 +54,13 @@ npx rotops inventory scan
 This gives you the first draft of the denominator.
 It is intentionally heuristic.
 
-### 2. Review scanner noise
+### 3. Review scanner noise
 
 Use `runtime-discovery-policy.json` to:
 
 - ignore generated or irrelevant files
 - suppress reviewed false positives
+- override runtime categories with repo-local include or exclude patterns
 - keep CI stable
 
 Do not edit the reviewed denominator just to make validation green.
@@ -55,14 +68,14 @@ Review discovery first.
 
 The discovery layer exists to challenge the reviewed model, not to be rewritten away.
 
-### 3. Declare the reviewed denominator
+### 4. Declare the reviewed denominator
 
 Move accepted runtime sources into `runtime-inventory.json`.
 
 This file is the denominator your team is willing to manage.
 If the denominator is wrong, every downstream green signal is weaker than it looks.
 
-### 4. Derive management surfaces
+### 5. Derive management surfaces
 
 ```bash
 npx rotops surfaces derive
@@ -80,7 +93,7 @@ Good surfaces are:
 There is no package-level fixed list.
 Surfaces are project-specific management partitions.
 
-### 5. Register obligations
+### 6. Register obligations
 
 For each surface, define obligations with:
 
@@ -90,7 +103,7 @@ For each surface, define obligations with:
 - fidelity
 - owner tests
 
-### 6. Connect the proof
+### 7. Connect the proof
 
 Annotate owner tests:
 
@@ -100,7 +113,7 @@ Annotate owner tests:
 
 If a test owns no obligation, it should not be presented as runtime proof.
 
-### 7. Add the control gate to CI
+### 8. Add the control gate to CI
 
 Run:
 
@@ -111,6 +124,7 @@ npx rotops validate
 before the main test suite.
 
 Treat `validate` failures as control-plane regressions, not as incidental tooling noise.
+When discovery is still advisory, warnings should still be reviewed even if they do not fail CI yet.
 
 ## What a good rollout looks like
 

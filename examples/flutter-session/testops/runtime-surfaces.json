@@ -1,0 +1,55 @@
+{
+  "$schema": "./runtime-surfaces.schema.json",
+  "version": "1.0.0",
+  "principle": "runtime-obligation-first",
+  "surfaces": [
+    {
+      "id": "auth-access",
+      "description": "Session bootstrap and access decisions.",
+      "inventorySourceIds": [
+        "auth-entry"
+      ],
+      "requiredEvidence": [
+        "state_transition",
+        "derived_view"
+      ],
+      "requiredOutcomeClasses": [
+        "success",
+        "failure"
+      ],
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "client-state",
+      "description": "Authentication UI state transitions.",
+      "inventorySourceIds": [
+        "auth-client-state"
+      ],
+      "requiredEvidence": [
+        "state_transition",
+        "derived_view"
+      ],
+      "requiredOutcomeClasses": [
+        "success",
+        "failure"
+      ],
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "workflow-orchestration",
+      "description": "Session bootstrap orchestration inside the product boundary.",
+      "inventorySourceIds": [
+        "auth-workflow"
+      ],
+      "requiredEvidence": [
+        "state_transition",
+        "derived_view"
+      ],
+      "requiredOutcomeClasses": [
+        "success",
+        "failure"
+      ],
+      "minimumFidelity": "simulated"
+    }
+  ]
+}

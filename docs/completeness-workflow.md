@@ -29,6 +29,8 @@ Controls the scanner:
 
 - ignore noisy files
 - document reviewed suppressions
+- steer discovery with repo-local source overrides
+- decide whether discovered-vs-reviewed drift is an error or a warning
 
 This is where you justify why a discovered candidate should not become part of the managed denominator.
 

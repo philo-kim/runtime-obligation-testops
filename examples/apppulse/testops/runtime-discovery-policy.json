@@ -2,6 +2,21 @@
   "$schema": "./runtime-discovery-policy.schema.json",
   "version": "1.0.0",
   "principle": "runtime-obligation-first",
+  "candidateReviewMode": "error",
+  "codeFilePatterns": [
+    "**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}"
+  ],
+  "sourceExtensions": [
+    ".ts",
+    ".tsx",
+    ".js",
+    ".jsx",
+    ".mts",
+    ".cts",
+    ".mjs",
+    ".cjs"
+  ],
   "ignorePatterns": [],
-  "suppressions": []
+  "suppressions": [],
+  "sourceOverrides": []
 }
