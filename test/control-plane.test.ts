@@ -4,7 +4,9 @@ import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:
 import { afterEach, describe, expect, it } from "vitest";
 import {
   analyzeImpact,
+  buildRuntimeAgentContract,
   deriveSurfaceCatalog,
+  generateReviewBacklog,
   generateVitestWorkspace,
   initWorkspace,
   scanRuntimeInventory,
@@ -59,6 +61,7 @@ function makeDiscoveryPolicy(): RuntimeDiscoveryPolicy {
     candidateReviewMode: "error",
     codeFilePatterns: ["**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}"],
     sourceExtensions: [".ts", ".tsx", ".js", ".jsx", ".mts", ".cts", ".mjs", ".cjs"],
+    scopePatterns: ["**/*"],
     ignorePatterns: [],
     suppressions: [],
     sourceOverrides: [],
@@ -469,6 +472,103 @@ describe("scanRuntimeInventory", () => {
     expect(inventory.sources.flatMap((source) => source.sourcePatterns)).not.toContain(
       "docs/archive/legacy.tsx",
     );
+  });
+
+  it("supports staged adoption by scoping discovery to a managed slice", () => {
+    const root = makeTempDir();
+    writeProjectFile(root, "lib/presentation/auth/auth_viewmodel.dart", "class AuthViewModel {}\n");
+    writeProjectFile(root, "lib/presentation/feed/feed_viewmodel.dart", "class FeedViewModel {}\n");
+
+    const inventory = scanRuntimeInventory(root, {
+      discoveryPolicy: {
+        version: "1.0.0",
+        principle: "runtime-obligation-first",
+        candidateReviewMode: "warning",
+        codeFilePatterns: ["**/*.dart"],
+        sourceExtensions: [".dart"],
+        scopePatterns: ["lib/presentation/auth/**/*.dart"],
+        ignorePatterns: [],
+        suppressions: [],
+        sourceOverrides: [
+          {
+            sourceId: "client-state",
+            mode: "replace",
+            includePatterns: ["lib/presentation/**/*.dart"],
+          },
+        ],
+      },
+    });
+
+    expect(inventory.sources).toHaveLength(2);
+    expect(inventory.sources.map((source) => source.id)).toEqual(["auth-access", "client-state"]);
+    expect(inventory.sources[0].sourcePatterns).toEqual(["lib/presentation/auth/auth_viewmodel.dart"]);
+    expect(inventory.sources[1].sourcePatterns).toEqual(["lib/presentation/auth/auth_viewmodel.dart"]);
+  });
+});
+
+describe("generateReviewBacklog", () => {
+  it("produces a candidate backlog with suggested actions", () => {
+    const root = makeTempDir();
+    writeProjectFile(root, "src/entry.ts", "export const entry = true;\n");
+    writeProjectFile(root, "src/lib/prisma.ts", "export const prisma = true;\n");
+    writeProjectFile(root, "prisma/schema.prisma", "model Example { id String @id }\n");
+    writeProjectFile(root, "docs/archive/auth.ts", "export const archivedAuth = true;\n");
+    writeProjectFile(
+      root,
+      "test/entry.test.ts",
+      "// runtime-obligations: request-entry.success\nexport const testFile = true;\n",
+    );
+
+    const inventory = makeInventory();
+    const backlog = generateReviewBacklog(root, {
+      controlPlane: makeControlPlane(),
+      inventory,
+      surfaceCatalog: deriveSurfaceCatalog(inventory),
+      discoveryPolicy: {
+        ...makeDiscoveryPolicy(),
+        codeFilePatterns: ["**/*.{ts,tsx,prisma}"],
+        scopePatterns: ["src/**/*", "prisma/schema.prisma", "docs/archive/**/*.ts"],
+      },
+    });
+
+    expect(backlog.unresolvedCandidates).toBe(3);
+    expect(backlog.candidates).toContainEqual(
+      expect.objectContaining({
+        file: "src/lib/prisma.ts",
+        suggestedAction: "accept",
+      }),
+    );
+    expect(backlog.candidates).toContainEqual(
+      expect.objectContaining({
+        file: "docs/archive/auth.ts",
+        suggestedAction: "suppress",
+      }),
+    );
+  });
+});
+
+describe("buildRuntimeAgentContract", () => {
+  it("exports a machine-readable agent workflow contract", () => {
+    const root = makeTempDir();
+    const contract = buildRuntimeAgentContract(root, {
+      version: "1.0.0",
+      principle: "runtime-obligation-first",
+      artifactPaths: {
+        controlPlanePath: path.join(root, "testops", "runtime-control-plane.json"),
+        inventoryPath: path.join(root, "testops", "runtime-inventory.json"),
+        surfaceCatalogPath: path.join(root, "testops", "runtime-surfaces.json"),
+        fidelityPolicyPath: path.join(root, "testops", "fidelity-policy.json"),
+        discoveryPolicyPath: path.join(root, "testops", "runtime-discovery-policy.json"),
+      },
+    });
+
+    expect(contract.readOrder[0]).toBe("testops/runtime-discovery-policy.json");
+    expect(contract.requiredCommands.map((command) => command.id)).toEqual([
+      "review",
+      "impact",
+      "validate",
+    ]);
+    expect(contract.mandatoryLoop).toContain("rerun validate before considering the change complete");
   });
 });
 

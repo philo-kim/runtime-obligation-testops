@@ -9,6 +9,7 @@ The point is to demonstrate how a team can start with one critical runtime slice
 
 - a hand-authored reviewed model for a `session/auth` slice
 - `candidateReviewMode: "warning"` during bootstrap
+- `scopePatterns` that intentionally limit discovery to the pilot slice
 - repo-local `sourceOverrides` that steer discovery toward Dart runtime files
 - obligations and owner tests that still close the slice even before whole-repo completeness is enforced
 

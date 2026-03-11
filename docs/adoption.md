@@ -40,6 +40,7 @@ Set `runtime-discovery-policy.json` first.
 In many repos, the right initial setting is:
 
 - `candidateReviewMode: "warning"`
+- narrow `scopePatterns` for the first managed slice
 - explicit `ignorePatterns` for generated or vendored paths
 - targeted `sourceOverrides` for categories the generic scanner cannot infer well yet
 
@@ -56,10 +57,17 @@ It is intentionally heuristic.
 
 ### 3. Review scanner noise
 
+Turn raw scanner output into a review queue:
+
+```bash
+npx rotops review
+```
+
 Use `runtime-discovery-policy.json` to:
 
 - ignore generated or irrelevant files
 - suppress reviewed false positives
+- narrow discovery scope while adoption is still intentionally partial
 - override runtime categories with repo-local include or exclude patterns
 - keep CI stable
 
@@ -125,6 +133,15 @@ before the main test suite.
 
 Treat `validate` failures as control-plane regressions, not as incidental tooling noise.
 When discovery is still advisory, warnings should still be reviewed even if they do not fail CI yet.
+
+If your repo uses AI agents heavily, export the machine-readable contract as part of the control loop:
+
+```bash
+npx rotops export agent-contract
+```
+
+That contract is not the source of truth by itself.
+It is the generated operational view that tells agents which artifacts to read first and which commands are non-negotiable.
 
 ## What a good rollout looks like
 

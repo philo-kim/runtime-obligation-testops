@@ -12,6 +12,7 @@ Instead, each repo teaches the package how its runtime is expressed.
 Use `runtime-discovery-policy.json` to define:
 
 - the file universe discovery is allowed to inspect
+- the currently managed scope of discovery during staged adoption
 - which file extensions belong to this repo's source model
 - which generated, vendored, or mirrored paths are irrelevant
 - which matches are reviewed suppressions
@@ -56,6 +57,18 @@ Examples:
 - `["**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}"]`
 - `["**/*.{ts,tsx,js,jsx,dart}"]`
 
+### `scopePatterns`
+
+Defines which subset of the candidate universe is actively managed right now.
+
+Use this when:
+
+- adoption is starting from one runtime slice
+- a mixed repo contains large unmanaged regions for now
+- whole-repo discovery is still too noisy to gate safely
+
+This is how staged adoption becomes explicit instead of ad hoc.
+
 ### `sourceExtensions`
 
 Defines which source extensions count when the scanner resolves imports or import-adjacent signals.
@@ -99,6 +112,7 @@ Examples:
   "principle": "runtime-obligation-first",
   "candidateReviewMode": "warning",
   "codeFilePatterns": ["**/*.{ts,tsx,js,jsx,dart}"],
+  "scopePatterns": ["lib/presentation/auth/**/*.dart", "lib/core/session/**/*.dart"],
   "sourceExtensions": [".ts", ".tsx", ".js", ".jsx", ".dart"],
   "ignorePatterns": ["**/.fvm/**", "**/ios/.symlinks/**", "**/generated/**"],
   "suppressions": [],

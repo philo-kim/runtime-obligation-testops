@@ -780,6 +780,7 @@ export function validateControlPlane(
     derivedSurfaces: surfaceCatalog?.surfaces.length,
     discoveredSources: discoveredInventory?.sources.length,
     discoveredFiles: discoveredInventoryGrouped?.sourcesByFile.size,
+    discoveryScopePatterns: discoveryPolicy?.scopePatterns,
     surfaceSummaries,
     issues,
   };
@@ -801,6 +802,9 @@ export function printSummary(summary: ValidationSummary): void {
   }
   if (summary.discoveredFiles !== undefined) {
     console.log(`- discovered files: ${summary.discoveredFiles}`);
+  }
+  if (summary.discoveryScopePatterns?.length) {
+    console.log(`- discovery scope: ${summary.discoveryScopePatterns.join(", ")}`);
   }
 
   for (const surface of summary.surfaceSummaries) {

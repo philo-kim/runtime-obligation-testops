@@ -128,6 +128,7 @@ export interface RuntimeDiscoveryPolicy {
   candidateReviewMode?: RuntimeDiscoveryCandidateReviewMode;
   codeFilePatterns?: string[];
   sourceExtensions?: string[];
+  scopePatterns?: string[];
   ignorePatterns?: string[];
   suppressions?: RuntimeDiscoverySuppression[];
   sourceOverrides?: RuntimeDiscoverySourceOverride[];
@@ -162,6 +163,7 @@ export interface ValidationSummary {
   derivedSurfaces?: number;
   discoveredSources?: number;
   discoveredFiles?: number;
+  discoveryScopePatterns?: string[];
   surfaceSummaries: SurfaceSummary[];
   issues: ValidationIssue[];
 }
@@ -186,4 +188,51 @@ export interface ImpactAnalysis {
   impactedSurfaces: string[];
   impactedObligations: string[];
   impactedOwnerTests: string[];
+}
+
+export type ReviewSuggestedAction = "accept" | "suppress" | "review";
+
+export interface ReviewCandidate {
+  file: string;
+  sourceIds: string[];
+  sourceKinds: string[];
+  surfaceHints: string[];
+  minimumFidelity: string[];
+  suggestedAction: ReviewSuggestedAction;
+  reasons: string[];
+}
+
+export interface ReviewBacklog {
+  principle: string;
+  version: string;
+  discoveryScopePatterns?: string[];
+  discoveredSources: number;
+  discoveredFiles: number;
+  declaredInventoryFiles: number;
+  unresolvedCandidates: number;
+  candidates: ReviewCandidate[];
+}
+
+export interface ArtifactPathMap {
+  controlPlanePath: string;
+  inventoryPath: string;
+  surfaceCatalogPath: string;
+  fidelityPolicyPath: string;
+  discoveryPolicyPath: string;
+}
+
+export interface AgentCommand {
+  id: string;
+  command: string;
+  purpose: string;
+  blocking: boolean;
+}
+
+export interface RuntimeAgentContract {
+  principle: string;
+  version: string;
+  artifactPaths: ArtifactPathMap;
+  readOrder: string[];
+  mandatoryLoop: string[];
+  requiredCommands: AgentCommand[];
 }

@@ -16,6 +16,10 @@
     ".mjs",
     ".cjs"
   ],
+  "scopePatterns": [
+    "src/**/*",
+    "prisma/schema.prisma"
+  ],
   "ignorePatterns": [],
   "suppressions": [],
   "sourceOverrides": []

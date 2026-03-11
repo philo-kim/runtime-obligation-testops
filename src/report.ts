@@ -23,6 +23,9 @@ export function renderMarkdown(summary: ValidationSummary): string {
   if (summary.discoveredFiles !== undefined) {
     lines.push(`- Discovered Files: ${summary.discoveredFiles}`);
   }
+  if (summary.discoveryScopePatterns?.length) {
+    lines.push(`- Discovery Scope: ${summary.discoveryScopePatterns.join(", ")}`);
+  }
   lines.push(`- Errors: ${errorCount}`);
   lines.push(`- Warnings: ${warningCount}`);
   lines.push(`- Issues: ${summary.issues.length}`);

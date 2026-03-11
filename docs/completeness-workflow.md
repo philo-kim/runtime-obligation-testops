@@ -66,12 +66,13 @@ Without fidelity policy, teams can overclaim runtime confidence using only low-r
 ## Recommended operating loop
 
 1. run `rotops inventory scan`
-2. review the candidate discoveries
-3. update `runtime-discovery-policy.json` for real suppressions
-4. update `runtime-inventory.json`
-5. derive or update `runtime-surfaces.json`
-6. update obligations and owner tests
-7. run `rotops validate`
+2. run `rotops review`
+3. review the candidate discoveries
+4. update `runtime-discovery-policy.json` for real suppressions or staged scope decisions
+5. update `runtime-inventory.json`
+6. derive or update `runtime-surfaces.json`
+7. update obligations and owner tests
+8. run `rotops validate`
 
 ## What `validate` now proves
 

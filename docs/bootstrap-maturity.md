@@ -31,6 +31,7 @@ You add:
 
 - `runtime-discovery-policy.json`
 - `rotops inventory scan`
+- `rotops review`
 
 with `candidateReviewMode: "warning"`.
 
@@ -42,6 +43,8 @@ This is the right stage when:
 - vendor or generated paths are noisy
 - discovery heuristics need tuning
 - the runtime denominator is still being actively mapped
+
+In this stage it is often correct to narrow `scopePatterns` to one managed slice instead of pretending the whole repo is already review-ready.
 
 ### 3. Enforced completeness
 

@@ -197,9 +197,11 @@ Then run the CLI:
 npx rotops init
 npx rotops inventory scan
 npx rotops surfaces derive
+npx rotops review
 npx rotops validate
 npx rotops report
 npx rotops impact --changed src/path/to/file.ts
+npx rotops export agent-contract
 npx rotops export vitest-workspace --out vitest.runtime.workspace.ts
 ```
 
@@ -212,21 +214,23 @@ Do not assume every repo should start in strict discovery mode.
 The safe sequence is:
 
 1. start with a reviewed model for one important runtime slice
-2. use `rotops validate` and `rotops impact` as the first CI gate
-3. keep discovery in `warning` mode while repo-local policy is still being shaped
-4. move discovery drift to `error` once the scanner is trustworthy for that repo
+2. keep discovery scoped to the slice you actually intend to manage first
+3. use `rotops validate` and `rotops impact` as the first CI gate
+4. use `rotops review` to keep discovered candidates visible while repo-local policy is still being shaped
+5. move discovery drift to `error` once the scanner is trustworthy for that repo
 
 That rollout works better than pretending heuristics are already perfect.
 
 ## Recommended operating loop
 
 1. Run `inventory scan` to discover candidate runtime sources.
-2. Review the candidate denominator.
-3. Record suppressions and scanner noise in `runtime-discovery-policy.json`.
+2. Run `review` to turn scanner output into an explicit review backlog.
+3. Record suppressions, scope decisions, and scanner noise in `runtime-discovery-policy.json`.
 4. Accept the reviewed denominator in `runtime-inventory.json`.
 5. Derive or refine runtime surfaces in `runtime-surfaces.json`.
 6. Register obligations, evidence, fidelity, and owner tests in `runtime-control-plane.json`.
-7. Run `validate` before the main test suite.
+7. Export the machine-readable agent contract for local tooling or CI.
+8. Run `validate` before the main test suite.
 
 ## What `validate` checks
 
@@ -248,10 +252,12 @@ The expected loop is:
 
 1. detect changed runtime files
 2. run `rotops impact`
-3. compare discovered candidates to the reviewed model
-4. accept, suppress, or continue reviewing candidate drift through repo-local policy
-5. update obligations and owner tests
-6. rerun `rotops validate`
+3. run `rotops review` when denominator drift may have changed
+4. compare discovered candidates to the reviewed model
+5. accept, suppress, or continue reviewing candidate drift through repo-local policy
+6. update obligations and owner tests
+7. export or refresh the machine-readable runtime agent contract when project paths or process changed
+8. rerun `rotops validate`
 
 The control system exists so an agent cannot “solve” testing by only adding lines of test code.
 The agent has to maintain the runtime model too.

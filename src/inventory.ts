@@ -245,6 +245,31 @@ function resolveSourceExtensions(options?: {
     : DEFAULT_SOURCE_EXTENSIONS;
 }
 
+function resolveScopePatterns(options?: {
+  discoveryPolicy?: RuntimeDiscoveryPolicy;
+}): string[] {
+  return options?.discoveryPolicy?.scopePatterns?.length
+    ? options.discoveryPolicy.scopePatterns
+    : [];
+}
+
+function applyDiscoveryScope(
+  repoRoot: string,
+  matches: string[],
+  ignorePatterns: string[],
+  options?: {
+    discoveryPolicy?: RuntimeDiscoveryPolicy;
+  },
+): string[] {
+  const scopePatterns = resolveScopePatterns(options);
+  if (scopePatterns.length === 0) {
+    return unique(matches);
+  }
+
+  const scopedFiles = new Set(expandPatterns(repoRoot, scopePatterns, ignorePatterns));
+  return unique(matches.filter((filePath) => scopedFiles.has(filePath)));
+}
+
 function expandCodeFiles(
   repoRoot: string,
   ignorePatterns: string[],
@@ -252,7 +277,8 @@ function expandCodeFiles(
     discoveryPolicy?: RuntimeDiscoveryPolicy;
   },
 ): string[] {
-  return unique(
+  return applyDiscoveryScope(
+    repoRoot,
     fg.sync(resolveCodeFilePatterns(options), {
       cwd: repoRoot,
       ignore: ignorePatterns,
@@ -260,6 +286,8 @@ function expandCodeFiles(
       onlyFiles: true,
       unique: true,
     }).map((match) => toPosix(match)),
+    ignorePatterns,
+    options,
   );
 }
 
@@ -392,6 +420,9 @@ function applySourceOverride(
   baseMatches: string[],
   ignorePatterns: string[],
   override?: RuntimeDiscoverySourceOverride,
+  options?: {
+    discoveryPolicy?: RuntimeDiscoveryPolicy;
+  },
 ): string[] {
   if (!override) {
     return unique(baseMatches);
@@ -410,7 +441,12 @@ function applySourceOverride(
       ? includeMatches
       : unique([...baseMatches, ...includeMatches]);
 
-  return candidateMatches.filter((filePath) => !excluded.has(filePath));
+  return applyDiscoveryScope(
+    repoRoot,
+    candidateMatches.filter((filePath) => !excluded.has(filePath)),
+    ignorePatterns,
+    options,
+  );
 }
 
 function detectClientStateSources(
@@ -436,6 +472,7 @@ function detectClientStateSources(
     unique(matches),
     ignorePatterns,
     sourceOverrideFor(options?.discoveryPolicy, "client-state"),
+    options,
   );
 }
 
@@ -462,6 +499,7 @@ function detectExternalSources(
     unique(matches),
     ignorePatterns,
     sourceOverrideFor(options?.discoveryPolicy, "external-contracts"),
+    options,
   );
 }
 
@@ -483,13 +521,18 @@ function detectWorkflowSources(
       "**/*orchestr*.*",
     ],
     ignorePatterns,
-  ).filter((filePath) => !claimedFiles.has(filePath) && isLikelyWorkflowFile(filePath));
+  );
+
+  const scopedMatches = applyDiscoveryScope(repoRoot, matches, ignorePatterns, options).filter(
+    (filePath) => !claimedFiles.has(filePath) && isLikelyWorkflowFile(filePath),
+  );
 
   return applySourceOverride(
     repoRoot,
-    unique(matches),
+    unique(scopedMatches),
     ignorePatterns,
     sourceOverrideFor(options?.discoveryPolicy, "workflow-orchestration"),
+    options,
   );
 }
 
@@ -529,9 +572,10 @@ function detectInvariantSources(
 
   return applySourceOverride(
     repoRoot,
-    unique([...imports]),
+    applyDiscoveryScope(repoRoot, unique([...imports]), discoveryIgnores(options), options),
     discoveryIgnores(options),
     sourceOverrideFor(options?.discoveryPolicy, "runtime-invariants"),
+    options,
   );
 }
 
@@ -553,9 +597,10 @@ export function scanRuntimeInventory(
 
     const matches = applySourceOverride(
       repoRoot,
-      expandPatterns(repoRoot, rule.patterns, ignorePatterns),
+      applyDiscoveryScope(repoRoot, expandPatterns(repoRoot, rule.patterns, ignorePatterns), ignorePatterns, options),
       ignorePatterns,
       sourceOverrideFor(options?.discoveryPolicy, rule.id),
+      options,
     );
     const source = makeSource(rule, matches);
     if (!source) {

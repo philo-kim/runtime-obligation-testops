@@ -2,22 +2,27 @@
 import path from "node:path";
 import { existsSync, readFileSync } from "node:fs";
 import {
+  DEFAULT_AGENT_CONTRACT_PATH,
   DEFAULT_CONFIG_PATH,
   DEFAULT_DISCOVERY_POLICY_PATH,
   DEFAULT_FIDELITY_POLICY_PATH,
   DEFAULT_INVENTORY_PATH,
   DEFAULT_REPORT_JSON_PATH,
   DEFAULT_REPORT_MD_PATH,
+  DEFAULT_REVIEW_JSON_PATH,
+  DEFAULT_REVIEW_MD_PATH,
   DEFAULT_SURFACES_PATH,
 } from "./constants.js";
 import { generateVitestWorkspace } from "./adapters/vitest.js";
+import { buildRuntimeAgentContract } from "./agent-contract.js";
 import { deriveSurfaceCatalog } from "./derivation.js";
 import { writeTextFile } from "./fs-utils.js";
 import { analyzeImpact } from "./impact.js";
 import { initWorkspace } from "./init.js";
 import { scanRuntimeInventory } from "./inventory.js";
-import { loadProjectModel } from "./model.js";
+import { loadProjectModel, resolveProjectPaths } from "./model.js";
 import { writeReports } from "./report.js";
+import { generateReviewBacklog, renderReviewMarkdown } from "./review.js";
 import { printSummary, validateControlPlane } from "./validation.js";
 import type {
   RuntimeControlPlane,
@@ -117,6 +122,9 @@ function printHelp(): void {
   console.log("  rotops inventory scan [--root path] [--policy path] [--out path]");
   console.log("  rotops surfaces derive [--root path] [--inventory path] [--out path]");
   console.log(
+    "  rotops review [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--discovery-policy path] [--root path] [--out-json path] [--out-md path]",
+  );
+  console.log(
     "  rotops validate [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--discovery-policy path] [--root path] [--allow-missing-annotations]",
   );
   console.log(
@@ -127,6 +135,9 @@ function printHelp(): void {
   );
   console.log(
     "  rotops export vitest-workspace [--config path] [--root path] [--out path] [--alias @=./src]",
+  );
+  console.log(
+    "  rotops export agent-contract [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--discovery-policy path] [--root path] [--out path]",
   );
 }
 
@@ -239,6 +250,52 @@ function commandImpact(parsed: ParsedArgs): void {
   console.log(JSON.stringify(impact, null, 2));
 }
 
+function commandReview(parsed: ParsedArgs): void {
+  const repoRoot = resolveRoot(parsed);
+  const model = loadProjectModel(repoRoot, {
+    controlPlanePath: getFlag(parsed, "config", DEFAULT_CONFIG_PATH),
+    inventoryPath: getFlag(parsed, "inventory", DEFAULT_INVENTORY_PATH),
+    surfaceCatalogPath: getFlag(parsed, "surfaces", DEFAULT_SURFACES_PATH),
+    fidelityPolicyPath: getFlag(parsed, "fidelity", DEFAULT_FIDELITY_POLICY_PATH),
+    discoveryPolicyPath: getFlag(parsed, "discovery-policy", DEFAULT_DISCOVERY_POLICY_PATH),
+  });
+  const backlog = generateReviewBacklog(repoRoot, model);
+  const jsonPath = path.resolve(
+    repoRoot,
+    getFlag(parsed, "out-json", DEFAULT_REVIEW_JSON_PATH) ?? DEFAULT_REVIEW_JSON_PATH,
+  );
+  const mdPath = path.resolve(
+    repoRoot,
+    getFlag(parsed, "out-md", DEFAULT_REVIEW_MD_PATH) ?? DEFAULT_REVIEW_MD_PATH,
+  );
+
+  maybeWriteJson(jsonPath, backlog);
+  writeTextFile(mdPath, renderReviewMarkdown(backlog));
+
+  console.log(`Runtime review backlog ${backlog.version}`);
+  console.log(`- discovered sources: ${backlog.discoveredSources}`);
+  console.log(`- discovered files: ${backlog.discoveredFiles}`);
+  console.log(`- declared inventory files: ${backlog.declaredInventoryFiles}`);
+  console.log(`- unresolved candidates: ${backlog.unresolvedCandidates}`);
+  if (backlog.discoveryScopePatterns?.length) {
+    console.log(`- discovery scope: ${backlog.discoveryScopePatterns.join(", ")}`);
+  }
+  if (backlog.candidates.length > 0) {
+    console.log("");
+    for (const candidate of backlog.candidates.slice(0, 20)) {
+      console.log(
+        `- ${candidate.file}: action=${candidate.suggestedAction}, sources=${candidate.sourceIds.join(", ")}`,
+      );
+    }
+    if (backlog.candidates.length > 20) {
+      console.log(`- ... ${backlog.candidates.length - 20} more candidates`);
+    }
+  }
+  console.log("");
+  console.log(path.relative(repoRoot, jsonPath));
+  console.log(path.relative(repoRoot, mdPath));
+}
+
 function commandExportVitestWorkspace(parsed: ParsedArgs): void {
   const repoRoot = resolveRoot(parsed);
   const configPath = getFlag(parsed, "config", DEFAULT_CONFIG_PATH) ?? DEFAULT_CONFIG_PATH;
@@ -262,6 +319,30 @@ function commandExportVitestWorkspace(parsed: ParsedArgs): void {
   });
 
   writeTextFile(outputPath, contents);
+  console.log(path.relative(repoRoot, outputPath));
+}
+
+function commandExportAgentContract(parsed: ParsedArgs): void {
+  const repoRoot = resolveRoot(parsed);
+  const projectPaths = resolveProjectPaths(repoRoot, {
+    controlPlanePath: getFlag(parsed, "config", DEFAULT_CONFIG_PATH),
+    inventoryPath: getFlag(parsed, "inventory", DEFAULT_INVENTORY_PATH),
+    surfaceCatalogPath: getFlag(parsed, "surfaces", DEFAULT_SURFACES_PATH),
+    fidelityPolicyPath: getFlag(parsed, "fidelity", DEFAULT_FIDELITY_POLICY_PATH),
+    discoveryPolicyPath: getFlag(parsed, "discovery-policy", DEFAULT_DISCOVERY_POLICY_PATH),
+  });
+  const controlPlane = loadControlPlane(repoRoot, projectPaths.controlPlanePath);
+  const contract = buildRuntimeAgentContract(repoRoot, {
+    version: controlPlane.version,
+    principle: controlPlane.principle,
+    artifactPaths: projectPaths,
+  });
+  const outputPath = path.resolve(
+    repoRoot,
+    getFlag(parsed, "out", DEFAULT_AGENT_CONTRACT_PATH) ?? DEFAULT_AGENT_CONTRACT_PATH,
+  );
+
+  maybeWriteJson(outputPath, contract);
   console.log(path.relative(repoRoot, outputPath));
 }
 
@@ -291,12 +372,19 @@ function main(): void {
     case "report":
       validateAndMaybeReport(parsed, true);
       return;
+    case "review":
+      commandReview(parsed);
+      return;
     case "impact":
       commandImpact(parsed);
       return;
     case "export":
       if (subcommand === "vitest-workspace") {
         commandExportVitestWorkspace(parsed);
+        return;
+      }
+      if (subcommand === "agent-contract") {
+        commandExportAgentContract(parsed);
         return;
       }
       break;

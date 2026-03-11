@@ -5,3 +5,6 @@ export const DEFAULT_FIDELITY_POLICY_PATH = "testops/fidelity-policy.json";
 export const DEFAULT_DISCOVERY_POLICY_PATH = "testops/runtime-discovery-policy.json";
 export const DEFAULT_REPORT_JSON_PATH = "testops/runtime-control-plane.report.json";
 export const DEFAULT_REPORT_MD_PATH = "testops/runtime-control-plane.report.md";
+export const DEFAULT_REVIEW_JSON_PATH = "testops/runtime-review.report.json";
+export const DEFAULT_REVIEW_MD_PATH = "testops/runtime-review.report.md";
+export const DEFAULT_AGENT_CONTRACT_PATH = "testops/runtime-agent-contract.json";
