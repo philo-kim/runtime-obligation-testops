@@ -1,0 +1,59 @@
+{
+  "$schema": "./runtime-control-plane.schema.json",
+  "version": "1.0.0",
+  "principle": "automated testing is managed against the full set of runtime obligations",
+  "evidenceKinds": [
+    "response",
+    "redirect",
+    "state_transition",
+    "storage_write",
+    "storage_read",
+    "job_enqueue",
+    "job_process",
+    "external_call",
+    "derived_view"
+  ],
+  "fidelityLevels": [
+    "isolated",
+    "simulated",
+    "contract",
+    "real-dependency",
+    "full-system"
+  ],
+  "surfaces": [
+    {
+      "id": "runtime-entry",
+      "description": "Replace this with a real runtime surface for your project.",
+      "sourcePatterns": [
+        "src/**/*.ts"
+      ],
+      "testPatterns": [
+        "test/**/*.test.ts"
+      ],
+      "execution": {
+        "runner": "custom",
+        "verifyCommand": "npm test"
+      }
+    }
+  ],
+  "obligations": [
+    {
+      "id": "runtime-entry.example-obligation",
+      "surface": "runtime-entry",
+      "sourcePatterns": [
+        "src/**/*.ts"
+      ],
+      "event": "Replace this with a real external runtime event.",
+      "outcomes": [
+        "Replace this with the observable outcomes the system must preserve."
+      ],
+      "evidence": [
+        "response"
+      ],
+      "fidelity": "simulated",
+      "ownerTests": [
+        "test/example.test.ts"
+      ]
+    }
+  ]
+}

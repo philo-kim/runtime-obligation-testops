@@ -1,0 +1,164 @@
+{
+  "$schema": "../../../schema/runtime-control-plane.schema.json",
+  "version": "1.0.0",
+  "principle": "automated testing is managed against the full set of runtime obligations",
+  "evidenceKinds": [
+    "response",
+    "redirect",
+    "state_transition",
+    "storage_write",
+    "storage_read",
+    "job_enqueue",
+    "job_process",
+    "external_call",
+    "derived_view"
+  ],
+  "fidelityLevels": [
+    "isolated",
+    "simulated",
+    "contract",
+    "real-dependency",
+    "full-system"
+  ],
+  "surfaces": [
+    {
+      "id": "auth-access",
+      "description": "Credential validation and protected-route access control.",
+      "sourcePatterns": [
+        "src/middleware.ts",
+        "src/lib/auth.ts"
+      ],
+      "testPatterns": [
+        "src/test/auth.unit.test.ts",
+        "src/test/middleware.unit.test.ts"
+      ],
+      "execution": {
+        "runner": "vitest",
+        "verifyCommand": "npm run test:runtime -- --project auth-access",
+        "environment": "node",
+        "setupFiles": [
+          "src/test/setup.unit.ts"
+        ],
+        "include": [
+          "src/test/auth.unit.test.ts",
+          "src/test/middleware.unit.test.ts"
+        ],
+        "testTimeout": 5000
+      }
+    },
+    {
+      "id": "client-runtime",
+      "description": "Client bootstrapping and user-visible state transitions.",
+      "sourcePatterns": [
+        "src/components/providers.tsx",
+        "src/components/layout/header.tsx",
+        "src/lib/app-context.tsx",
+        "src/app/(auth)/login/page.tsx",
+        "src/app/(auth)/register/page.tsx",
+        "src/app/invitations/accept/page.tsx",
+        "src/app/(dashboard)/page.tsx",
+        "src/app/(dashboard)/settings/page.tsx"
+      ],
+      "testPatterns": [
+        "src/test/*.component.test.tsx",
+        "src/test/i18n.unit.test.tsx"
+      ],
+      "execution": {
+        "runner": "vitest",
+        "verifyCommand": "npm run test:runtime -- --project client-runtime",
+        "environment": "jsdom",
+        "setupFiles": [
+          "src/test/setup.component.ts"
+        ],
+        "include": [
+          "src/test/*.component.test.tsx",
+          "src/test/i18n.unit.test.tsx"
+        ]
+      }
+    },
+    {
+      "id": "background-execution",
+      "description": "Cron-triggered and worker-driven background processing.",
+      "sourcePatterns": [
+        "src/workers/index.ts",
+        "src/app/api/cron/**/route.ts"
+      ],
+      "testPatterns": [
+        "src/test/workers.unit.test.ts",
+        "src/test/api-routes/cron.integration.test.ts"
+      ],
+      "execution": {
+        "runner": "vitest",
+        "verifyCommand": "npm run test:runtime -- --project background-execution",
+        "environment": "node",
+        "setupFiles": [
+          "src/test/setup.integration.ts"
+        ],
+        "include": [
+          "src/test/workers.unit.test.ts",
+          "src/test/api-routes/cron.integration.test.ts"
+        ],
+        "testTimeout": 15000
+      }
+    }
+  ],
+  "obligations": [
+    {
+      "id": "auth-access.redirect-unauthenticated",
+      "surface": "auth-access",
+      "sourcePatterns": [
+        "src/middleware.ts"
+      ],
+      "event": "An unauthenticated user accesses a protected route.",
+      "outcomes": [
+        "The request is redirected to login and the callback URL is preserved."
+      ],
+      "evidence": [
+        "redirect"
+      ],
+      "fidelity": "simulated",
+      "ownerTests": [
+        "src/test/middleware.unit.test.ts"
+      ]
+    },
+    {
+      "id": "client-runtime.auth-page-transitions",
+      "surface": "client-runtime",
+      "sourcePatterns": [
+        "src/app/(auth)/login/page.tsx",
+        "src/app/(auth)/register/page.tsx"
+      ],
+      "event": "A user submits authentication forms.",
+      "outcomes": [
+        "Validation, failure, and redirect transitions stay observable."
+      ],
+      "evidence": [
+        "state_transition",
+        "redirect"
+      ],
+      "fidelity": "simulated",
+      "ownerTests": [
+        "src/test/auth-pages.component.test.tsx"
+      ]
+    },
+    {
+      "id": "background-execution.process-scheduled-jobs",
+      "surface": "background-execution",
+      "sourcePatterns": [
+        "src/workers/index.ts"
+      ],
+      "event": "Schedulers enqueue data-collection jobs for active apps.",
+      "outcomes": [
+        "Jobs are enqueued with the expected payloads and processed by the right worker handler."
+      ],
+      "evidence": [
+        "job_enqueue",
+        "job_process"
+      ],
+      "fidelity": "simulated",
+      "ownerTests": [
+        "src/test/workers.unit.test.ts"
+      ]
+    }
+  ]
+}
