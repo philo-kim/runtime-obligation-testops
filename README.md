@@ -2,35 +2,71 @@
 
 `runtime-obligation-testops` is a TestOps control system for teams that want automated testing managed against real runtime behavior, not just test labels or line coverage.
 
-The package exists for one reason:
+The package exists for one governing rule:
 
 `automated testing is managed against the full set of runtime obligations`
 
-That rule is enforced through four non-negotiable properties:
+That rule is enforced through four properties:
 
 - `event completeness`
 - `outcome closure`
 - `observability`
 - `traceability`
 
-## What problem this solves
+## Why this exists
 
-Most projects can tell you:
+This project started from a real failure mode in a real product.
+
+The original product had:
+
+- a large automated test suite
+- very high code coverage
+- passing builds
+- clear `unit / integration / component` labels
+
+and still had missing runtime layers.
+
+The core problem was not that the product had too few tests.
+The problem was that the product had no durable way to answer:
+
+- what the real runtime denominator is
+- which runtime layers are actually managed
+- what observable outcomes are proven
+- which tests own that proof
+- whether the denominator has been silently narrowed by hand
+
+In practice that caused exactly the kind of mistake this package is designed to prevent:
+
+- a repo can look “100% covered”
+- a declared control plane can look clean
+- and a whole runtime layer can still be absent from the managed denominator
+
+That is why this package exists.
+
+It is not a prettier coverage tool.
+It is a control system for the runtime denominator itself.
+
+## What problem it solves
+
+Most repos can tell you:
 
 - how many tests exist
-- which folders have tests
+- which folders contain tests
+- which runner they use
 - what line coverage says
 
-They usually cannot tell you:
+Most repos cannot tell you:
 
 - which runtime events define the real denominator
-- whether that denominator was silently narrowed by hand
-- which observable outcomes are actually proven
-- which tests own that proof
+- which surfaces partition that denominator
+- which obligations close those surfaces
+- what evidence proves each obligation
+- which tests own that evidence
+- whether discovery and the reviewed model have drifted apart
 
-This package turns that into an explicit control system.
+This package makes those questions explicit and operational.
 
-## The runtime model
+## What the package actually manages
 
 The package manages five connected artifacts:
 
@@ -48,21 +84,63 @@ The package manages five connected artifacts:
 The first artifact manages discovery.
 The other four artifacts are the reviewed runtime model.
 
-## How it works
+## The key design choice: discovered vs reviewed
 
 The package keeps two layers of truth in tension:
 
 - `discovered runtime candidates`
-- `declared reviewed model`
+- `reviewed runtime model`
 
-That distinction matters.
+That distinction is the whole point.
 
-If you only manage the declared model, teams can accidentally leave real runtime files out of scope.
-If you only trust discovery, you get noisy heuristics instead of a stable operating model.
+If you manage only the reviewed model, teams can accidentally leave real runtime files out of scope.
+If you trust only discovery, you get noisy heuristics instead of an operable system.
 
-`rotops validate` is the gate that keeps those two layers from drifting apart silently.
+`rotops validate` exists to stop those two layers from drifting apart silently.
+
+## Where this fits in a real test strategy
+
+This package is for governing automated verification below and around the top black-box layer.
+
+It helps teams manage:
+
+- request boundaries
+- client state transitions
+- workflow orchestration
+- persistence semantics
+- background execution
+- external contracts
+- runtime invariants
+
+It does not eliminate the need for:
+
+- real-dependency integration tests
+- full-system tests
+- browser or manual black-box checks
+
+Those layers still matter.
+This package exists so the rest of the automated stack is not managed blindly.
+
+## What this is not
+
+It is not:
+
+- a replacement for your test runner
+- a replacement for E2E or manual testing
+- an oracle that invents the correct runtime model without review
+- a promise that line coverage now means runtime completeness
+
+It is a control system for keeping your runtime denominator, proof graph, and test ownership aligned.
 
 ## Commands
+
+Install the package in the target repo first:
+
+```bash
+npm install -D runtime-obligation-testops
+```
+
+Then run the CLI:
 
 ```bash
 npx rotops init
@@ -73,6 +151,8 @@ npx rotops report
 npx rotops impact --changed src/path/to/file.ts
 npx rotops export vitest-workspace --out vitest.runtime.workspace.ts
 ```
+
+If your repo uses non-default paths such as `testing/` instead of `testops/`, keep the artifacts where they are and wrap the CLI with project-local scripts.
 
 ## Recommended operating loop
 
@@ -96,33 +176,25 @@ npx rotops export vitest-workspace --out vitest.runtime.workspace.ts
 - fidelity does not regress below policy
 - discovered runtime files are not missing from the reviewed denominator
 
-## What this package is not
+## How to use this in practice
 
-It is not:
+Use it when you want a repo to answer, concretely:
 
-- a replacement for your test runner
-- a replacement for real-dependency or full-system tests
-- an oracle that invents the correct runtime model without human review
+- what runtime behavior exists
+- what part of it is managed
+- what part is still unreviewed
+- what proof exists
+- what proof is too weak
+- what changed files affect which obligations
 
-It is a control system for keeping your runtime denominator, proof graph, and test ownership aligned.
-
-## Quick start
-
-```bash
-npm install -D runtime-obligation-testops
-npx rotops init --preset vitest
-npx rotops inventory scan
-npx rotops surfaces derive
-npx rotops validate
-```
-
-If your repo does not use the default `testops/` paths, wrap the CLI with project-local scripts and explicit paths.
+Do not use it as a cosmetic wrapper around existing folder labels.
+If the runtime denominator is not reviewed, the system is being used incorrectly.
 
 ## Public repo readiness
 
 A repo using this package is publishable when:
 
-- new runtime entrypoints cannot land without inventory review
+- new runtime entrypoints cannot land without denominator review
 - discovered-vs-declared drift fails CI
 - obligations own tests and annotations
 - proof strength is visible through fidelity policy
@@ -135,6 +207,7 @@ It should treat it as the runtime source of truth for automated testing changes.
 
 Start here:
 
+- [Why This Exists](./docs/why-this-exists.md)
 - [Principles](./docs/principles.md)
 - [Runtime Model](./docs/model.md)
 - [Adoption Guide](./docs/adoption.md)
@@ -144,13 +217,9 @@ Start here:
 ## Example
 
 The package includes a concrete product example under [examples/apppulse](./examples/apppulse).
-It shows how a real app can express:
 
-- discovery policy
-- reviewed inventory
-- runtime surfaces
-- runtime obligations
-- fidelity policy
+That example matters because this package was not invented from a blank framework template.
+It was extracted from a real product that exposed the exact failure mode this system is meant to prevent.
 
 ## License
 

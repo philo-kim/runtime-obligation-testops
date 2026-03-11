@@ -2,6 +2,16 @@
 
 This example shows how a real product expresses its automated test system as a reviewed runtime model.
 
+It matters because this package was extracted from the kind of product represented here:
+
+- multiple runtime entrypoints
+- mixed client and server behavior
+- persistence rules
+- background processing
+- external providers
+
+AppPulse is included as a case study of the original failure mode, not as a toy scaffold.
+
 ## Included artifacts
 
 - `testops/runtime-discovery-policy.json`
@@ -31,6 +41,13 @@ It has:
 - external provider adapters
 
 That makes it a good illustration of how the model scales beyond unit-vs-integration labels.
+
+It also demonstrates the original reason this package exists:
+
+- a repo can have strong tests and high coverage
+- and still need a better way to govern the runtime denominator itself
+
+This example shows what that governance looks like once it has been made explicit.
 
 ## How to read it
 

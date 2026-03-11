@@ -1,32 +1,42 @@
 # Principles
 
-The control plane exists to stop teams from confusing test volume or line coverage with actual runtime confidence.
+This package starts from one operational problem:
 
-## The governing rule
+`a repo can have many tests, high coverage, and still fail to express what runtime behavior is actually governed`
+
+The control system exists to prevent that failure mode.
+
+## Governing rule
 
 `automated testing is managed against the full set of runtime obligations`
 
-## Required properties
+That rule matters because neither test labels nor line coverage define the real denominator of the system.
+Only runtime behavior does.
+
+## The four required properties
 
 ### Event completeness
 
-Every externally reachable runtime event must exist in the managed testing scope.
+Every externally reachable runtime event must exist in the managed denominator.
 
-Examples:
+Typical examples:
 
-- user input
-- API calls
-- queue messages
+- user actions
+- request entrypoints
 - scheduled jobs
-- external callbacks
-- retries
-- replays
+- queue deliveries
+- worker execution
+- storage boundaries
+- external provider interactions
+- retries and replays
+
+If a real event can happen in production but is absent from the model, the system is incomplete even if coverage is high.
 
 ### Outcome closure
 
-Each event must enumerate the outcomes the real system can produce.
+Each event must close over the outcomes the real system can produce.
 
-Examples:
+Typical examples:
 
 - success
 - rejection
@@ -36,45 +46,68 @@ Examples:
 - duplicate execution
 - partial success
 - delayed propagation
+- fallback
+
+If only the happy path is modeled, the runtime is not actually governed.
 
 ### Observability
 
-Every outcome must close with observable evidence.
+Every outcome must terminate in observable evidence.
 
-Examples:
+Typical examples:
 
 - response payload
 - redirect
+- rendered state
 - state transition
 - storage write
 - storage read
-- background job
+- emitted job
 - external call
-- final rendered view
+- notification or audit record
+
+Evidence must be visible from outside the code under test.
+Internal function calls are not enough.
 
 ### Traceability
 
 Every obligation must be traceable:
 
-- back to the runtime source that created it
+- back to the runtime source that produced it
 - forward to the tests that prove it
-- back again when source code changes
+- back again when code changes affect the source
 
-This package treats traceability drift as a first-class failure.
+This package treats traceability drift as a first-class failure because unmanaged drift is how false confidence accumulates.
 
-## Operational implication
+## Operational consequence
 
-The package therefore manages five connected artifacts:
+To enforce those properties, the package manages five connected artifacts:
 
-- runtime discovery policy: how candidate runtime sources are found and reviewed
-- runtime inventory: the full set of externally reachable runtime sources
-- surface catalog: the project-specific management partition over that inventory
-- control plane: the obligation, evidence, and owner-test graph
-- fidelity policy: the minimum proof strength expected for each layer of that graph
+- `runtime-discovery-policy.json`
+- `runtime-inventory.json`
+- `runtime-surfaces.json`
+- `runtime-control-plane.json`
+- `fidelity-policy.json`
 
-## Practical consequence
+These artifacts let teams govern:
 
-The package treats `declared model only` as insufficient.
+- what the runtime denominator is
+- how it is partitioned into operable surfaces
+- which obligations close those surfaces
+- what evidence proves each obligation
+- what minimum proof strength is acceptable
 
-A repo can look clean while still missing part of the runtime denominator.
-That is why the validator compares the reviewed model against discovered runtime candidates.
+## Why discovered and reviewed both exist
+
+A reviewed model alone is not enough.
+A team can accidentally narrow the denominator by omission and still keep the declared model clean.
+
+Discovery alone is not enough either.
+Heuristics are useful, but raw scanner output is not an operating model.
+
+That is why this package keeps both:
+
+- `discovered runtime candidates`
+- `reviewed runtime model`
+
+The validator compares them so the team cannot silently drift into a smaller runtime denominator than the product actually has.

@@ -1,6 +1,6 @@
 # Runtime Model
 
-The package manages runtime verification in five linked artifacts:
+The package manages runtime verification through five linked artifacts:
 
 - `runtime-discovery-policy.json`
 - `runtime-inventory.json`
@@ -8,8 +8,16 @@ The package manages runtime verification in five linked artifacts:
 - `runtime-control-plane.json`
 - `fidelity-policy.json`
 
-The discovery policy controls how candidate runtime sources are found.
-The other four files are the reviewed runtime model.
+The discovery policy controls how candidate runtime sources are found and reviewed.
+The other four files form the reviewed runtime model.
+
+Together they answer five different questions:
+
+- what the scanner is allowed to propose
+- what the team accepts as the runtime denominator
+- how that denominator is partitioned into manageable surfaces
+- what obligations and evidence govern each surface
+- what proof strength is required
 
 ## Runtime source
 
@@ -33,6 +41,7 @@ Inventory sources define the reviewed denominator:
 - where storage or provider boundaries exist
 
 They are often seeded by scanner output, but they are not the same thing as raw scanner output.
+The inventory is the reviewed answer to "what real runtime scope are we governing?"
 
 ## Runtime discovery policy
 
@@ -44,11 +53,28 @@ Typical uses:
 - suppress reviewed false positives
 - keep the discovered candidate set stable in CI
 
+This file exists because discovery is useful but imperfect.
+It lets the team control heuristics without mutating the reviewed denominator just to get a green build.
+
 ## Runtime surface
 
 A runtime surface is a management partition that groups related runtime sources.
 
 Surfaces are not fixed by this package. Each project derives them from its own runtime model.
+
+Examples in different projects might include:
+
+- auth and access
+- request boundary
+- client state
+- workflow orchestration
+- persistence semantics
+- background execution
+- external contracts
+- runtime invariants
+
+The point is not to force a universal taxonomy.
+The point is to create an operable partition over the reviewed denominator.
 
 ## Runtime obligation
 
@@ -65,6 +91,7 @@ Each obligation records:
 - the owner tests
 
 Obligations close the reviewed inventory with concrete proof.
+They are the place where runtime behavior stops being informal and becomes test-governed.
 
 ## Fidelity policy
 
@@ -89,7 +116,10 @@ Suggested levels:
 - `real-dependency`
 - `full-system`
 
-The package does not force one set, but it forces each project to define and use one consistently.
+The package does not force one universal set, but it forces each project to define and use one consistently.
+
+This matters because not all obligations should be satisfied with the same kind of proof.
+Some need real storage, real queues, or full-system execution.
 
 ## Declared vs discovered
 
@@ -99,3 +129,5 @@ This package intentionally keeps two layers:
 - `declared reviewed model`
 
 The validator compares them so a team cannot silently narrow the denominator by hand.
+
+That comparison is what turns the package from a static documentation format into a control system.

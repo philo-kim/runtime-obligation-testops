@@ -2,6 +2,9 @@
 
 An AI agent should treat this system as executable runtime governance, not as optional documentation.
 
+The agent's job is not to maximize coverage quickly.
+The agent's job is to keep the runtime denominator, obligations, evidence, and owner tests aligned after each change.
+
 ## Read order
 
 Before changing runtime behavior, the agent should read:
@@ -25,6 +28,8 @@ For every runtime change:
 6. update owner tests and `runtime-obligations` annotations
 7. run `rotops impact` if the blast radius is unclear
 8. run `rotops validate`
+
+If discovery finds a candidate the reviewed model does not account for, the agent must not hide it by editing tests alone.
 
 ## What agents must never do
 

@@ -10,6 +10,9 @@ If you only trust discovery, you will drown in heuristics and false positives.
 
 The right workflow is to reconcile them continuously.
 
+That workflow exists because completeness is not the same thing as consistency.
+A perfectly consistent reviewed model can still be incomplete if the runtime denominator was silently narrowed.
+
 ## The five artifacts
 
 - `runtime-discovery-policy.json`
@@ -56,6 +59,8 @@ The proof graph:
 
 The minimum strength of proof expected for each layer of the graph.
 
+Without fidelity policy, teams can overclaim runtime confidence using only low-realism proofs.
+
 ## Recommended operating loop
 
 1. run `rotops inventory scan`
@@ -73,6 +78,13 @@ The minimum strength of proof expected for each layer of the graph.
 - declared obligations close the declared inventory
 - owner tests and annotations are traceable
 - discovered runtime files are not silently missing from the declared inventory
+
+## What still requires review
+
+- whether scanner suppressions are justified
+- whether outcomes are actually closed, not just minimally listed
+- whether fidelity policy is strong enough for the runtime surface
+- whether top black-box layers still need separate proof
 
 ## What `validate` does not replace
 
