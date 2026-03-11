@@ -19,7 +19,11 @@ import { scanRuntimeInventory } from "./inventory.js";
 import { loadProjectModel } from "./model.js";
 import { writeReports } from "./report.js";
 import { printSummary, validateControlPlane } from "./validation.js";
-import type { RuntimeControlPlane } from "./types.js";
+import type {
+  RuntimeControlPlane,
+  RuntimeDiscoveryPolicy,
+  RuntimeInventory,
+} from "./types.js";
 
 interface ParsedArgs {
   _: string[];
@@ -85,6 +89,22 @@ function loadControlPlane(repoRoot: string, configPath: string): RuntimeControlP
   return JSON.parse(readFileSync(absoluteConfigPath, "utf8")) as RuntimeControlPlane;
 }
 
+function loadOptionalJson<T>(repoRoot: string, filePath?: string): T | undefined {
+  if (!filePath) {
+    return undefined;
+  }
+
+  const absolutePath = path.isAbsolute(filePath)
+    ? filePath
+    : path.join(repoRoot, filePath);
+
+  if (!existsSync(absolutePath)) {
+    return undefined;
+  }
+
+  return JSON.parse(readFileSync(absolutePath, "utf8")) as T;
+}
+
 function maybeWriteJson(filePath: string, value: unknown): void {
   writeTextFile(filePath, JSON.stringify(value, null, 2) + "\n");
 }
@@ -126,24 +146,16 @@ function commandInit(parsed: ParsedArgs): void {
 
 function commandInventoryScan(parsed: ParsedArgs): void {
   const repoRoot = resolveRoot(parsed);
-  const discoveryPolicyPath = getFlag(
-    parsed,
-    "policy",
-    getFlag(parsed, "discovery-policy", DEFAULT_DISCOVERY_POLICY_PATH),
+  const discoveryPolicy = loadOptionalJson<RuntimeDiscoveryPolicy>(
+    repoRoot,
+    getFlag(parsed, "policy", getFlag(parsed, "discovery-policy", DEFAULT_DISCOVERY_POLICY_PATH)),
   );
-  const model = loadProjectModel(repoRoot, {
-    controlPlanePath: getFlag(parsed, "config", DEFAULT_CONFIG_PATH),
-    inventoryPath: getFlag(parsed, "inventory", DEFAULT_INVENTORY_PATH),
-    surfaceCatalogPath: getFlag(parsed, "surfaces", DEFAULT_SURFACES_PATH),
-    fidelityPolicyPath: getFlag(parsed, "fidelity", DEFAULT_FIDELITY_POLICY_PATH),
-    discoveryPolicyPath,
-  });
   const outputPath = path.resolve(
     repoRoot,
     getFlag(parsed, "out", DEFAULT_INVENTORY_PATH) ?? DEFAULT_INVENTORY_PATH,
   );
   const inventory = scanRuntimeInventory(repoRoot, {
-    discoveryPolicy: model.discoveryPolicy,
+    discoveryPolicy,
   });
   maybeWriteJson(outputPath, inventory);
   console.log(path.relative(repoRoot, outputPath));
@@ -152,15 +164,9 @@ function commandInventoryScan(parsed: ParsedArgs): void {
 function commandSurfaceDerive(parsed: ParsedArgs): void {
   const repoRoot = resolveRoot(parsed);
   const inventoryPath = getFlag(parsed, "inventory", DEFAULT_INVENTORY_PATH) ?? DEFAULT_INVENTORY_PATH;
-  const model = loadProjectModel(repoRoot, {
-    controlPlanePath: getFlag(parsed, "config", DEFAULT_CONFIG_PATH),
-    inventoryPath,
-    surfaceCatalogPath: getFlag(parsed, "surfaces", DEFAULT_SURFACES_PATH),
-    fidelityPolicyPath: getFlag(parsed, "fidelity", DEFAULT_FIDELITY_POLICY_PATH),
-    discoveryPolicyPath: getFlag(parsed, "discovery-policy", DEFAULT_DISCOVERY_POLICY_PATH),
-  });
+  const inventory = loadOptionalJson<RuntimeInventory>(repoRoot, inventoryPath);
 
-  if (!model.inventory) {
+  if (!inventory) {
     throw new Error(`Inventory file not found: ${inventoryPath}`);
   }
 
@@ -168,7 +174,7 @@ function commandSurfaceDerive(parsed: ParsedArgs): void {
     repoRoot,
     getFlag(parsed, "out", DEFAULT_SURFACES_PATH) ?? DEFAULT_SURFACES_PATH,
   );
-  const catalog = deriveSurfaceCatalog(model.inventory);
+  const catalog = deriveSurfaceCatalog(inventory);
   maybeWriteJson(outputPath, catalog);
   console.log(path.relative(repoRoot, outputPath));
 }

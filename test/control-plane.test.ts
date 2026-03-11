@@ -279,6 +279,55 @@ describe("scanRuntimeInventory", () => {
 
     expect(persistence?.sourcePatterns).toEqual(["src/lib/prisma.ts"]);
   });
+
+  it("detects client-state, workflow, external contracts, and runtime invariants from runtime signals", () => {
+    const root = makeTempDir();
+    writeProjectFile(
+      root,
+      "src/app/login/page.tsx",
+      `"use client";\nimport { useState } from "react";\nexport default function LoginPage() { const [open] = useState(false); return <button>{String(open)}</button>; }\n`,
+    );
+    writeProjectFile(
+      root,
+      "src/components/layout/header.tsx",
+      `"use client";\nimport { useTransition } from "react";\nexport function Header() { const [, startTransition] = useTransition(); return <button onClick={() => startTransition(() => undefined)}>menu</button>; }\n`,
+    );
+    writeProjectFile(
+      root,
+      "src/server/services/google-play-service.ts",
+      `export async function fetchGooglePlay() { return fetch("https://play.example.com"); }\n`,
+    );
+    writeProjectFile(
+      root,
+      "src/server/services/ranking-service.ts",
+      "export async function calculateRanks() { return [{ rank: 1 }]; }\n",
+    );
+    writeProjectFile(root, "src/lib/utils.ts", "export function clamp(value: number) { return value; }\n");
+    writeProjectFile(
+      root,
+      "src/test/property/utils.property.test.ts",
+      `import { describe, it, expect } from "vitest";\nimport fc from "fast-check";\nimport { clamp } from "@/lib/utils";\ndescribe("property", () => { it("uses clamp", () => { expect(clamp(1)).toBe(1); fc.assert(fc.property(fc.integer(), (value) => typeof clamp(value) === "number")); }); });\n`,
+    );
+
+    const inventory = scanRuntimeInventory(root);
+    const ids = inventory.sources.map((source) => source.id).sort();
+    const clientState = inventory.sources.find((source) => source.id === "client-state");
+    const workflow = inventory.sources.find((source) => source.id === "workflow-orchestration");
+    const external = inventory.sources.find((source) => source.id === "external-contracts");
+    const invariants = inventory.sources.find((source) => source.id === "runtime-invariants");
+
+    expect(ids).toContain("client-state");
+    expect(ids).toContain("workflow-orchestration");
+    expect(ids).toContain("external-contracts");
+    expect(ids).toContain("runtime-invariants");
+    expect(clientState?.sourcePatterns).toEqual([
+      "src/app/login/page.tsx",
+      "src/components/layout/header.tsx",
+    ]);
+    expect(workflow?.sourcePatterns).toEqual(["src/server/services/ranking-service.ts"]);
+    expect(external?.sourcePatterns).toEqual(["src/server/services/google-play-service.ts"]);
+    expect(invariants?.sourcePatterns).toEqual(["src/lib/utils.ts"]);
+  });
 });
 
 describe("initWorkspace", () => {

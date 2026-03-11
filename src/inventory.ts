@@ -1,11 +1,14 @@
-import { expandPatterns } from "./fs-utils.js";
+import { existsSync, lstatSync, readFileSync } from "node:fs";
+import path from "node:path";
+import fg from "fast-glob";
+import { expandPatterns, relativeToRoot, toPosix } from "./fs-utils.js";
 import type { RuntimeDiscoveryPolicy, RuntimeInventory, RuntimeInventorySource } from "./types.js";
 
 interface DetectionRule {
   id: string;
   description: string;
   kind: string;
-  patterns: string[];
+  patterns?: string[];
   events: string[];
   expectedEvidence: string[];
   expectedOutcomeClasses: string[];
@@ -22,11 +25,27 @@ const DEFAULT_IGNORE_PATTERNS = [
   "**/tests/**",
   "**/node_modules/**",
   "**/.git/**",
+  "**/.github/**",
   "**/.next/**",
   "**/dist/**",
   "**/build/**",
   "**/coverage/**",
 ];
+
+const NON_TEST_IGNORE_PATTERNS = [
+  "**/*.d.ts",
+  "**/node_modules/**",
+  "**/.git/**",
+  "**/.github/**",
+  "**/.next/**",
+  "**/dist/**",
+  "**/build/**",
+  "**/coverage/**",
+];
+
+const CODE_FILE_PATTERNS = ["**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}"];
+const PROPERTY_TEST_PATTERNS = ["**/property/**/*.test.*", "**/*.property.test.*"];
+const SOURCE_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".mts", ".cts", ".mjs", ".cjs"];
 
 const DETECTION_RULES: DetectionRule[] = [
   {
@@ -110,22 +129,50 @@ const DETECTION_RULES: DetectionRule[] = [
     minimumFidelity: "real-dependency",
   },
   {
+    id: "client-state",
+    description: "User-visible pages and stateful client-side transitions.",
+    kind: "ui-state",
+    events: ["A user-visible client surface transitions through runtime state."],
+    expectedEvidence: ["state_transition", "derived_view"],
+    expectedOutcomeClasses: ["success", "failure"],
+    surfaceHint: "client-state",
+    minimumFidelity: "simulated",
+  },
+  {
     id: "external-contracts",
     description: "Provider adapters and upstream API/SDK integrations.",
     kind: "external",
-    patterns: [
-      "**/*client*.*",
-      "**/*api.*",
-      "**/*connector*.*",
-      "**/*adapter*.*",
-    ],
     events: ["The system calls or interprets an external provider contract."],
     expectedEvidence: ["external_call", "response"],
     expectedOutcomeClasses: ["success", "provider_failure", "schema_drift"],
     surfaceHint: "external-contracts",
     minimumFidelity: "contract",
   },
+  {
+    id: "workflow-orchestration",
+    description: "Cross-step use cases and service-level orchestration inside the product boundary.",
+    kind: "workflow",
+    events: ["A product workflow coordinates multiple runtime steps to complete one use case."],
+    expectedEvidence: ["response", "storage_write", "derived_view"],
+    expectedOutcomeClasses: ["success", "failure"],
+    surfaceHint: "workflow-orchestration",
+    minimumFidelity: "simulated",
+  },
+  {
+    id: "runtime-invariants",
+    description: "Wide input-domain invariants inferred from property-style verification targets.",
+    kind: "invariant",
+    events: ["A runtime invariant is exercised over a broad input domain."],
+    expectedEvidence: ["response", "derived_view"],
+    expectedOutcomeClasses: ["success", "failure"],
+    surfaceHint: "runtime-invariants",
+    minimumFidelity: "isolated",
+  },
 ];
+
+function unique(values: string[]): string[] {
+  return [...new Set(values)].sort();
+}
 
 function discoveryIgnores(options?: {
   ignorePatterns?: string[];
@@ -141,6 +188,258 @@ function discoveryIgnores(options?: {
   ];
 }
 
+function nonTestDiscoveryIgnores(options?: {
+  ignorePatterns?: string[];
+  discoveryPolicy?: RuntimeDiscoveryPolicy;
+}): string[] {
+  return [
+    ...NON_TEST_IGNORE_PATTERNS,
+    ...((options?.ignorePatterns ?? []).filter((pattern) => !/test|spec/.test(pattern))),
+    ...((options?.discoveryPolicy?.ignorePatterns ?? []).filter((pattern) => !/test|spec/.test(pattern))),
+    ...((options?.discoveryPolicy?.suppressions ?? [])
+      .flatMap((suppression) => suppression.filePatterns)
+      .filter((pattern) => !/test|spec/.test(pattern))),
+  ];
+}
+
+function makeSource(rule: DetectionRule, matches: string[]): RuntimeInventorySource | undefined {
+  if (matches.length === 0) {
+    return undefined;
+  }
+
+  return {
+    id: rule.id,
+    description: rule.description,
+    kind: rule.kind,
+    sourcePatterns: unique(matches),
+    events: rule.events,
+    expectedEvidence: rule.expectedEvidence,
+    expectedOutcomeClasses: rule.expectedOutcomeClasses,
+    surfaceHint: rule.surfaceHint,
+    minimumFidelity: rule.minimumFidelity,
+  };
+}
+
+function expandCodeFiles(repoRoot: string, ignorePatterns: string[]): string[] {
+  return unique(
+    fg.sync(CODE_FILE_PATTERNS, {
+      cwd: repoRoot,
+      ignore: ignorePatterns,
+      dot: true,
+      onlyFiles: true,
+      unique: true,
+    }).map((match) => toPosix(match)),
+  );
+}
+
+function readSource(repoRoot: string, filePath: string): string {
+  return readFileSync(path.join(repoRoot, filePath), "utf8");
+}
+
+function hasUseClientDirective(source: string): boolean {
+  return /^\s*["']use client["'];/m.test(source);
+}
+
+function hasClientStateSignals(source: string): boolean {
+  return /\b(useState|useReducer|useTransition|useOptimistic|useActionState|useDeferredValue|useFormState|startTransition)\b/.test(
+    source,
+  );
+}
+
+function hasJsxRenderSignals(source: string): boolean {
+  return /return\s*\(\s*<|<\w[\w.-]*/s.test(source);
+}
+
+function hasExternalSignals(source: string): boolean {
+  return /\b(fetch|axios|XMLHttpRequest|undici|got)\s*\(|@anthropic-ai\/sdk|google-play-scraper|nodemailer|\banthropic\b/i.test(
+    source,
+  );
+}
+
+function isLikelyClientStateFile(filePath: string, source: string): boolean {
+  const normalized = toPosix(filePath);
+  if (/\/(app\/.*\/page|pages\/|screens\/|views\/)/.test(normalized)) {
+    return true;
+  }
+
+  if (!/(^|\/)(app|components)\//.test(normalized)) {
+    return false;
+  }
+
+  return hasUseClientDirective(source) && (hasClientStateSignals(source) || hasJsxRenderSignals(source));
+}
+
+function isLikelyExternalFile(filePath: string, source: string): boolean {
+  const normalized = toPosix(filePath);
+
+  if (/\/app\/api\//.test(normalized) || /\/controllers?\//.test(normalized) || /\/routes\//.test(normalized)) {
+    return false;
+  }
+
+  if (hasUseClientDirective(source)) {
+    return false;
+  }
+
+  if (
+    /\b(client|adapter|connector|collector|scraper|gateway)\b/i.test(path.basename(normalized))
+  ) {
+    return true;
+  }
+
+  if (!/(^|\/)(src\/)?(server|services|lib)\//.test(normalized)) {
+    return false;
+  }
+
+  return hasExternalSignals(source);
+}
+
+function isLikelyWorkflowFile(filePath: string): boolean {
+  const normalized = toPosix(filePath);
+  return /(^|\/)(services|usecases|workflows)\//.test(normalized) || /service|workflow|orchestr/i.test(path.basename(normalized));
+}
+
+function extractImportSpecifiers(source: string): string[] {
+  const specifiers = new Set<string>();
+  const staticImportPattern = /\bfrom\s+["']([^"']+)["']/g;
+  const dynamicImportPattern = /\bimport\s*\(\s*["']([^"']+)["']\s*\)/g;
+
+  let match: RegExpExecArray | null;
+  while ((match = staticImportPattern.exec(source)) !== null) {
+    specifiers.add(match[1]);
+  }
+  while ((match = dynamicImportPattern.exec(source)) !== null) {
+    specifiers.add(match[1]);
+  }
+
+  return [...specifiers];
+}
+
+function resolveImportTarget(
+  repoRoot: string,
+  importer: string,
+  specifier: string,
+): string | undefined {
+  let basePath: string | undefined;
+
+  if (specifier.startsWith("./") || specifier.startsWith("../")) {
+    basePath = path.resolve(path.dirname(path.join(repoRoot, importer)), specifier);
+  } else if (specifier.startsWith("@/")) {
+    basePath = path.join(repoRoot, "src", specifier.slice(2));
+  } else if (specifier.startsWith("src/")) {
+    basePath = path.join(repoRoot, specifier);
+  }
+
+  if (!basePath) {
+    return undefined;
+  }
+
+  const candidates = [
+    basePath,
+    ...SOURCE_EXTENSIONS.map((extension) => `${basePath}${extension}`),
+    ...SOURCE_EXTENSIONS.map((extension) => path.join(basePath, `index${extension}`)),
+  ];
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate) && lstatSync(candidate).isFile()) {
+      return relativeToRoot(repoRoot, candidate);
+    }
+  }
+
+  return undefined;
+}
+
+function detectClientStateSources(
+  repoRoot: string,
+  ignorePatterns: string[],
+  claimedFiles: Set<string>,
+): string[] {
+  const codeFiles = expandCodeFiles(repoRoot, ignorePatterns);
+  const matches = codeFiles.filter((filePath) => {
+    if (claimedFiles.has(filePath)) {
+      return false;
+    }
+
+    const source = readSource(repoRoot, filePath);
+    return isLikelyClientStateFile(filePath, source);
+  });
+
+  return unique(matches);
+}
+
+function detectExternalSources(
+  repoRoot: string,
+  ignorePatterns: string[],
+  claimedFiles: Set<string>,
+): string[] {
+  const codeFiles = expandCodeFiles(repoRoot, ignorePatterns);
+  const matches = codeFiles.filter((filePath) => {
+    if (claimedFiles.has(filePath)) {
+      return false;
+    }
+
+    const source = readSource(repoRoot, filePath);
+    return isLikelyExternalFile(filePath, source);
+  });
+
+  return unique(matches);
+}
+
+function detectWorkflowSources(
+  repoRoot: string,
+  ignorePatterns: string[],
+  claimedFiles: Set<string>,
+): string[] {
+  const matches = expandPatterns(
+    repoRoot,
+    [
+      "**/services/**/*.*",
+      "**/*service*.*",
+      "**/usecases/**/*.*",
+      "**/workflows/**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}",
+      "**/*orchestr*.*",
+    ],
+    ignorePatterns,
+  ).filter((filePath) => !claimedFiles.has(filePath) && isLikelyWorkflowFile(filePath));
+
+  return unique(matches);
+}
+
+function detectInvariantSources(
+  repoRoot: string,
+  options?: {
+    ignorePatterns?: string[];
+    discoveryPolicy?: RuntimeDiscoveryPolicy;
+  },
+): string[] {
+  const propertyTests = unique(
+    fg.sync(PROPERTY_TEST_PATTERNS, {
+      cwd: repoRoot,
+      ignore: nonTestDiscoveryIgnores(options),
+      dot: true,
+      onlyFiles: true,
+      unique: true,
+    }).map((match) => toPosix(match)),
+  );
+
+  const imports = new Set<string>();
+  for (const propertyTest of propertyTests) {
+    const source = readSource(repoRoot, propertyTest);
+    if (!/\bfast-check\b/.test(source)) {
+      continue;
+    }
+
+    for (const specifier of extractImportSpecifiers(source)) {
+      const resolved = resolveImportTarget(repoRoot, propertyTest, specifier);
+      if (!resolved || /(^|\/)(test|tests)\//.test(resolved)) {
+        continue;
+      }
+      imports.add(resolved);
+    }
+  }
+
+  return unique([...imports]);
+}
+
 export function scanRuntimeInventory(
   repoRoot: string,
   options?: {
@@ -150,24 +449,68 @@ export function scanRuntimeInventory(
 ): RuntimeInventory {
   const sources: RuntimeInventorySource[] = [];
   const ignorePatterns = discoveryIgnores(options);
+  const claimedFiles = new Set<string>();
 
   for (const rule of DETECTION_RULES) {
-    const matches = expandPatterns(repoRoot, rule.patterns, ignorePatterns);
-    if (matches.length === 0) {
+    if (!rule.patterns) {
       continue;
     }
 
-    sources.push({
-      id: rule.id,
-      description: rule.description,
-      kind: rule.kind,
-      sourcePatterns: matches,
-      events: rule.events,
-      expectedEvidence: rule.expectedEvidence,
-      expectedOutcomeClasses: rule.expectedOutcomeClasses,
-      surfaceHint: rule.surfaceHint,
-      minimumFidelity: rule.minimumFidelity,
-    });
+    const matches = expandPatterns(repoRoot, rule.patterns, ignorePatterns);
+    const source = makeSource(rule, matches);
+    if (!source) {
+      continue;
+    }
+
+    sources.push(source);
+    for (const filePath of source.sourcePatterns) {
+      claimedFiles.add(filePath);
+    }
+  }
+
+  const clientStateRule = DETECTION_RULES.find((rule) => rule.id === "client-state");
+  const clientStateMatches = detectClientStateSources(repoRoot, ignorePatterns, claimedFiles);
+  if (clientStateRule) {
+    const source = makeSource(clientStateRule, clientStateMatches);
+    if (source) {
+      sources.push(source);
+      for (const filePath of source.sourcePatterns) {
+        claimedFiles.add(filePath);
+      }
+    }
+  }
+
+  const externalRule = DETECTION_RULES.find((rule) => rule.id === "external-contracts");
+  const externalMatches = detectExternalSources(repoRoot, ignorePatterns, claimedFiles);
+  if (externalRule) {
+    const source = makeSource(externalRule, externalMatches);
+    if (source) {
+      sources.push(source);
+      for (const filePath of source.sourcePatterns) {
+        claimedFiles.add(filePath);
+      }
+    }
+  }
+
+  const workflowRule = DETECTION_RULES.find((rule) => rule.id === "workflow-orchestration");
+  const workflowMatches = detectWorkflowSources(repoRoot, ignorePatterns, claimedFiles);
+  if (workflowRule) {
+    const source = makeSource(workflowRule, workflowMatches);
+    if (source) {
+      sources.push(source);
+      for (const filePath of source.sourcePatterns) {
+        claimedFiles.add(filePath);
+      }
+    }
+  }
+
+  const invariantRule = DETECTION_RULES.find((rule) => rule.id === "runtime-invariants");
+  const invariantMatches = detectInvariantSources(repoRoot, options);
+  if (invariantRule) {
+    const source = makeSource(invariantRule, invariantMatches);
+    if (source) {
+      sources.push(source);
+    }
   }
 
   return {
@@ -175,6 +518,6 @@ export function scanRuntimeInventory(
     version: "1.0.0",
     principle: "runtime-obligation-first",
     sourceKinds: [...new Set(sources.map((source) => source.kind))].sort(),
-    sources,
+    sources: sources.sort((left, right) => left.id.localeCompare(right.id)),
   };
 }

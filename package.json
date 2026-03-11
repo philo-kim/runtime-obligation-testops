@@ -1,6 +1,6 @@
 {
   "name": "runtime-obligation-testops",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Runtime-obligation-first TestOps control system for discovered-vs-declared runtime coverage.",
   "license": "MIT",
   "type": "module",
