@@ -80,5 +80,7 @@ Use it when:
 - local wrappers hide non-default artifact paths
 - CI needs a stable artifact that describes the enforced loop
 
+If the repo wraps `rotops` behind project-local scripts, export the contract with command overrides so the agent sees the real operating commands instead of generic defaults.
+
 The exported contract is not a replacement for the reviewed model.
 It is a generated operational summary of it.

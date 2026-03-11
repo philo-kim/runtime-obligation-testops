@@ -221,8 +221,10 @@ export interface ArtifactPathMap {
   discoveryPolicyPath: string;
 }
 
+export type AgentCommandId = "review" | "impact" | "validate";
+
 export interface AgentCommand {
-  id: string;
+  id: AgentCommandId;
   command: string;
   purpose: string;
   blocking: boolean;

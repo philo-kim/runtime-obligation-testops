@@ -570,6 +570,41 @@ describe("buildRuntimeAgentContract", () => {
     ]);
     expect(contract.mandatoryLoop).toContain("rerun validate before considering the change complete");
   });
+
+  it("supports repo-local command overrides for wrapped control workflows", () => {
+    const root = makeTempDir();
+    const contract = buildRuntimeAgentContract(root, {
+      version: "1.0.0",
+      principle: "runtime-obligation-first",
+      artifactPaths: {
+        controlPlanePath: path.join(root, "testing", "runtime-control-plane.json"),
+        inventoryPath: path.join(root, "testing", "runtime-inventory.json"),
+        surfaceCatalogPath: path.join(root, "testing", "runtime-surfaces.json"),
+        fidelityPolicyPath: path.join(root, "testing", "fidelity-policy.json"),
+        discoveryPolicyPath: path.join(root, "testing", "runtime-discovery-policy.json"),
+      },
+      commandOverrides: {
+        review: "npm run test:review",
+        impact: "npm run test:impact -- --changed <path>",
+        validate: "npm run test:control",
+      },
+    });
+
+    expect(contract.requiredCommands).toEqual([
+      expect.objectContaining({
+        id: "review",
+        command: "npm run test:review",
+      }),
+      expect.objectContaining({
+        id: "impact",
+        command: "npm run test:impact -- --changed <path>",
+      }),
+      expect.objectContaining({
+        id: "validate",
+        command: "npm run test:control",
+      }),
+    ]);
+  });
 });
 
 describe("initWorkspace", () => {

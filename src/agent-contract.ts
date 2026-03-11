@@ -1,5 +1,5 @@
 import path from "node:path";
-import type { ArtifactPathMap, RuntimeAgentContract } from "./types.js";
+import type { AgentCommand, AgentCommandId, ArtifactPathMap, RuntimeAgentContract } from "./types.js";
 
 function relativeArtifactPaths(
   repoRoot: string,
@@ -20,9 +20,30 @@ export function buildRuntimeAgentContract(
     version: string;
     principle: string;
     artifactPaths: ArtifactPathMap;
+    commandOverrides?: Partial<Record<AgentCommandId, string>>;
   },
 ): RuntimeAgentContract {
   const artifactPaths = relativeArtifactPaths(repoRoot, options.artifactPaths);
+  const defaultCommands: AgentCommand[] = [
+    {
+      id: "review",
+      command: "rotops review",
+      purpose: "Show unresolved discovered candidates that still need reviewed-model decisions.",
+      blocking: false,
+    },
+    {
+      id: "impact",
+      command: "rotops impact --changed <path>",
+      purpose: "Map changed runtime files to inventory sources, surfaces, obligations, and owner tests.",
+      blocking: false,
+    },
+    {
+      id: "validate",
+      command: "rotops validate",
+      purpose: "Enforce completeness, traceability, and fidelity gates for the reviewed runtime model.",
+      blocking: true,
+    },
+  ];
 
   return {
     principle: options.principle,
@@ -44,25 +65,9 @@ export function buildRuntimeAgentContract(
       "update inventory, surfaces, obligations, evidence, and owner tests as needed",
       "rerun validate before considering the change complete",
     ],
-    requiredCommands: [
-      {
-        id: "review",
-        command: "rotops review",
-        purpose: "Show unresolved discovered candidates that still need reviewed-model decisions.",
-        blocking: false,
-      },
-      {
-        id: "impact",
-        command: "rotops impact --changed <path>",
-        purpose: "Map changed runtime files to inventory sources, surfaces, obligations, and owner tests.",
-        blocking: false,
-      },
-      {
-        id: "validate",
-        command: "rotops validate",
-        purpose: "Enforce completeness, traceability, and fidelity gates for the reviewed runtime model.",
-        blocking: true,
-      },
-    ],
+    requiredCommands: defaultCommands.map((command) => ({
+      ...command,
+      command: options.commandOverrides?.[command.id] ?? command.command,
+    })),
   };
 }

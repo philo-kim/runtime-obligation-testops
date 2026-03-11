@@ -205,6 +205,15 @@ npx rotops export agent-contract
 npx rotops export vitest-workspace --out vitest.runtime.workspace.ts
 ```
 
+If your repo wraps `rotops` behind project-local scripts, export the agent contract with those commands:
+
+```bash
+npx rotops export agent-contract \
+  --review-command "npm run test:review" \
+  --impact-command "npm run test:impact -- --changed <path>" \
+  --validate-command "npm run test:control"
+```
+
 If your repo uses non-default paths such as `testing/` instead of `testops/`, keep the artifacts where they are and wrap the CLI with project-local scripts.
 
 ## Recommended bootstrap strategy

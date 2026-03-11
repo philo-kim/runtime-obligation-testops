@@ -137,7 +137,7 @@ function printHelp(): void {
     "  rotops export vitest-workspace [--config path] [--root path] [--out path] [--alias @=./src]",
   );
   console.log(
-    "  rotops export agent-contract [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--discovery-policy path] [--root path] [--out path]",
+    "  rotops export agent-contract [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--discovery-policy path] [--root path] [--out path] [--review-command cmd] [--impact-command cmd] [--validate-command cmd]",
   );
 }
 
@@ -336,6 +336,11 @@ function commandExportAgentContract(parsed: ParsedArgs): void {
     version: controlPlane.version,
     principle: controlPlane.principle,
     artifactPaths: projectPaths,
+    commandOverrides: {
+      review: getFlag(parsed, "review-command"),
+      impact: getFlag(parsed, "impact-command"),
+      validate: getFlag(parsed, "validate-command"),
+    },
   });
   const outputPath = path.resolve(
     repoRoot,
