@@ -1,0 +1,103 @@
+{
+  "$schema": "./runtime-surfaces.schema.json",
+  "version": "1.0.0",
+  "principle": "runtime-obligation-first",
+  "surfaces": [
+    {
+      "id": "auth-access",
+      "description": "Credential validation and protected-route access control.",
+      "inventorySourceIds": [
+        "auth.middleware",
+        "auth.session-and-oauth"
+      ],
+      "requiredEvidence": [],
+      "requiredOutcomeClasses": [],
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "request-boundary",
+      "description": "HTTP request handling, auth gates, input contracts, and response contracts.",
+      "inventorySourceIds": [
+        "request.apps",
+        "request.alerts",
+        "request.competitors-and-creatives",
+        "request.dashboard-workspace-team",
+        "request.invitations-and-reports",
+        "request.keywords-and-rankings",
+        "request.metadata-and-reviews",
+        "request.performance-and-market",
+        "request.cron"
+      ],
+      "requiredEvidence": [],
+      "requiredOutcomeClasses": [],
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "app-bootstrap",
+      "description": "Client bootstrap, provider wiring, and first app selection.",
+      "inventorySourceIds": [
+        "bootstrap.app-context"
+      ],
+      "requiredEvidence": [],
+      "requiredOutcomeClasses": [],
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "client-state",
+      "description": "User-visible client state transitions across auth, dashboard, settings, and header flows.",
+      "inventorySourceIds": [
+        "client.auth-pages",
+        "client.invitation",
+        "client.header-controls",
+        "client.dashboard-states",
+        "client.settings-add-app"
+      ],
+      "requiredEvidence": [],
+      "requiredOutcomeClasses": [],
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "workflow-orchestration",
+      "description": "Server-side orchestration and runtime use-case decisions inside the product boundary.",
+      "inventorySourceIds": [
+        "workflow.keyword-and-ranking",
+        "workflow.review-competitor-and-alert",
+        "workflow.metadata-reporting-and-enterprise"
+      ],
+      "requiredEvidence": [],
+      "requiredOutcomeClasses": [],
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "background-execution",
+      "description": "Cron-triggered and worker-driven background processing.",
+      "inventorySourceIds": [
+        "background.keyword-and-metadata",
+        "background.review-and-sentiment"
+      ],
+      "requiredEvidence": [],
+      "requiredOutcomeClasses": [],
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "external-contracts",
+      "description": "Adapters that interpret external provider responses and failure modes.",
+      "inventorySourceIds": [
+        "external.provider-contracts"
+      ],
+      "requiredEvidence": [],
+      "requiredOutcomeClasses": [],
+      "minimumFidelity": "contract"
+    },
+    {
+      "id": "runtime-invariants",
+      "description": "Property-based invariants that protect wide input domains.",
+      "inventorySourceIds": [
+        "invariant.runtime"
+      ],
+      "requiredEvidence": [],
+      "requiredOutcomeClasses": [],
+      "minimumFidelity": "isolated"
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 {
-  "$schema": "../../../schema/runtime-control-plane.schema.json",
+  "$schema": "./runtime-control-plane.schema.json",
   "version": "1.0.0",
-  "principle": "automated testing is managed against the full set of runtime obligations",
+  "principle": "runtime-obligation-first",
   "evidenceKinds": [
     "response",
     "redirect",
@@ -34,7 +34,6 @@
       ],
       "execution": {
         "runner": "vitest",
-        "verifyCommand": "npm run test:runtime -- --project auth-access",
         "environment": "node",
         "setupFiles": [
           "src/test/setup.unit.ts"
@@ -47,12 +46,58 @@
       }
     },
     {
-      "id": "client-runtime",
-      "description": "Client bootstrapping and user-visible state transitions.",
+      "id": "request-boundary",
+      "description": "HTTP request handling, auth gates, input contracts, and response contracts.",
+      "sourcePatterns": [
+        "src/app/api/**/route.ts"
+      ],
+      "sourceIgnorePatterns": [
+        "src/app/api/auth/[...nextauth]/route.ts"
+      ],
+      "testPatterns": [
+        "src/test/api-routes.test.ts",
+        "src/test/api-routes/**/*.integration.test.ts"
+      ],
+      "execution": {
+        "runner": "vitest",
+        "environment": "node",
+        "setupFiles": [
+          "src/test/setup.integration.ts"
+        ],
+        "include": [
+          "src/test/api-routes.test.ts",
+          "src/test/api-routes/**/*.integration.test.ts"
+        ],
+        "testTimeout": 15000
+      }
+    },
+    {
+      "id": "app-bootstrap",
+      "description": "Client bootstrap, provider wiring, and first app selection.",
       "sourcePatterns": [
         "src/components/providers.tsx",
+        "src/lib/app-context.tsx"
+      ],
+      "testPatterns": [
+        "src/test/app-context.component.test.tsx"
+      ],
+      "execution": {
+        "runner": "vitest",
+        "environment": "jsdom",
+        "setupFiles": [
+          "src/test/setup.component.ts"
+        ],
+        "include": [
+          "src/test/app-context.component.test.tsx"
+        ]
+      }
+    },
+    {
+      "id": "client-state",
+      "description": "User-visible client state transitions across auth, dashboard, settings, and header flows.",
+      "sourcePatterns": [
         "src/components/layout/header.tsx",
-        "src/lib/app-context.tsx",
+        "src/lib/i18n/index.ts",
         "src/app/(auth)/login/page.tsx",
         "src/app/(auth)/register/page.tsx",
         "src/app/invitations/accept/page.tsx",
@@ -60,20 +105,85 @@
         "src/app/(dashboard)/settings/page.tsx"
       ],
       "testPatterns": [
-        "src/test/*.component.test.tsx",
+        "src/test/auth-pages.component.test.tsx",
+        "src/test/invitation-accept.component.test.tsx",
+        "src/test/header.component.test.tsx",
+        "src/test/dashboard-page.component.test.tsx",
+        "src/test/settings-page.component.test.tsx",
         "src/test/i18n.unit.test.tsx"
       ],
       "execution": {
         "runner": "vitest",
-        "verifyCommand": "npm run test:runtime -- --project client-runtime",
         "environment": "jsdom",
         "setupFiles": [
           "src/test/setup.component.ts"
         ],
         "include": [
-          "src/test/*.component.test.tsx",
+          "src/test/auth-pages.component.test.tsx",
+          "src/test/invitation-accept.component.test.tsx",
+          "src/test/header.component.test.tsx",
+          "src/test/dashboard-page.component.test.tsx",
+          "src/test/settings-page.component.test.tsx",
           "src/test/i18n.unit.test.tsx"
         ]
+      }
+    },
+    {
+      "id": "workflow-orchestration",
+      "description": "Server-side orchestration and runtime use-case decisions inside the product boundary.",
+      "sourcePatterns": [
+        "src/server/services/**/*.ts"
+      ],
+      "sourceIgnorePatterns": [
+        "src/server/services/apple-ads-service.ts",
+        "src/server/services/google-play-service.ts",
+        "src/server/services/store-search-service.ts"
+      ],
+      "testPatterns": [
+        "src/test/alert-advanced-service.test.ts",
+        "src/test/alert-notifications.unit.test.ts",
+        "src/test/alert-service.test.ts",
+        "src/test/competitor-advanced.unit.test.ts",
+        "src/test/creative-service.test.ts",
+        "src/test/dashboard-service.test.ts",
+        "src/test/enterprise.integration.test.ts",
+        "src/test/keyword-advanced.unit.test.ts",
+        "src/test/keyword-service.test.ts",
+        "src/test/keyword-service.unit.test.ts",
+        "src/test/metadata-advanced-service.test.ts",
+        "src/test/metadata-advanced.integration.test.ts",
+        "src/test/performance-service.test.ts",
+        "src/test/ranking-advanced.unit.test.ts",
+        "src/test/report-service.integration.test.ts",
+        "src/test/review-advanced.unit.test.ts",
+        "src/test/translation-service.integration.test.ts"
+      ],
+      "execution": {
+        "runner": "vitest",
+        "environment": "node",
+        "setupFiles": [
+          "src/test/setup.integration.ts"
+        ],
+        "include": [
+          "src/test/alert-advanced-service.test.ts",
+          "src/test/alert-notifications.unit.test.ts",
+          "src/test/alert-service.test.ts",
+          "src/test/competitor-advanced.unit.test.ts",
+          "src/test/creative-service.test.ts",
+          "src/test/dashboard-service.test.ts",
+          "src/test/enterprise.integration.test.ts",
+          "src/test/keyword-advanced.unit.test.ts",
+          "src/test/keyword-service.test.ts",
+          "src/test/keyword-service.unit.test.ts",
+          "src/test/metadata-advanced-service.test.ts",
+          "src/test/metadata-advanced.integration.test.ts",
+          "src/test/performance-service.test.ts",
+          "src/test/ranking-advanced.unit.test.ts",
+          "src/test/report-service.integration.test.ts",
+          "src/test/review-advanced.unit.test.ts",
+          "src/test/translation-service.integration.test.ts"
+        ],
+        "testTimeout": 15000
       }
     },
     {
@@ -89,7 +199,6 @@
       ],
       "execution": {
         "runner": "vitest",
-        "verifyCommand": "npm run test:runtime -- --project background-execution",
         "environment": "node",
         "setupFiles": [
           "src/test/setup.integration.ts"
@@ -100,21 +209,92 @@
         ],
         "testTimeout": 15000
       }
+    },
+    {
+      "id": "external-contracts",
+      "description": "Adapters that interpret external provider responses and failure modes.",
+      "sourcePatterns": [
+        "src/lib/anthropic.ts",
+        "src/server/ai-service.ts",
+        "src/server/itunes-api.ts",
+        "src/server/review-collector.ts",
+        "src/server/services/apple-ads-service.ts",
+        "src/server/services/google-play-service.ts",
+        "src/server/services/store-search-service.ts"
+      ],
+      "testPatterns": [
+        "src/test/ai-service.test.ts",
+        "src/test/anthropic.unit.test.ts",
+        "src/test/apple-ads-service.unit.test.ts",
+        "src/test/fault-injection.integration.test.ts",
+        "src/test/google-play.unit.test.ts",
+        "src/test/itunes-api.test.ts",
+        "src/test/review-collector.test.ts",
+        "src/test/store-search.integration.test.ts"
+      ],
+      "execution": {
+        "runner": "vitest",
+        "environment": "node",
+        "setupFiles": [
+          "src/test/setup.unit.ts"
+        ],
+        "include": [
+          "src/test/ai-service.test.ts",
+          "src/test/anthropic.unit.test.ts",
+          "src/test/apple-ads-service.unit.test.ts",
+          "src/test/fault-injection.integration.test.ts",
+          "src/test/google-play.unit.test.ts",
+          "src/test/itunes-api.test.ts",
+          "src/test/review-collector.test.ts",
+          "src/test/store-search.integration.test.ts"
+        ],
+        "testTimeout": 15000
+      }
+    },
+    {
+      "id": "runtime-invariants",
+      "description": "Property-based invariants that protect wide input domains.",
+      "sourcePatterns": [
+        "src/lib/utils.ts",
+        "src/server/itunes-api.ts",
+        "src/server/services/metadata-advanced-service.ts"
+      ],
+      "testPatterns": [
+        "src/test/property/**/*.test.ts"
+      ],
+      "execution": {
+        "runner": "vitest",
+        "environment": "node",
+        "setupFiles": [
+          "src/test/setup.unit.ts"
+        ],
+        "include": [
+          "src/test/property/**/*.test.ts"
+        ],
+        "testTimeout": 15000
+      }
     }
   ],
   "obligations": [
     {
-      "id": "auth-access.redirect-unauthenticated",
+      "id": "auth.middleware.session-gate",
       "surface": "auth-access",
       "sourcePatterns": [
         "src/middleware.ts"
       ],
-      "event": "An unauthenticated user accesses a protected route.",
+      "event": "A request reaches a protected application path.",
       "outcomes": [
-        "The request is redirected to login and the callback URL is preserved."
+        "Authenticated requests continue to the target path.",
+        "Unauthenticated requests redirect to /login and preserve callbackUrl."
+      ],
+      "outcomeClasses": [
+        "success",
+        "auth_denied",
+        "redirect"
       ],
       "evidence": [
-        "redirect"
+        "redirect",
+        "response"
       ],
       "fidelity": "simulated",
       "ownerTests": [
@@ -122,15 +302,303 @@
       ]
     },
     {
-      "id": "client-runtime.auth-page-transitions",
-      "surface": "client-runtime",
+      "id": "auth.credentials-and-oauth-contract",
+      "surface": "auth-access",
+      "sourcePatterns": [
+        "src/lib/auth.ts"
+      ],
+      "event": "Credential login or OAuth user creation is processed by Auth.js callbacks.",
+      "outcomes": [
+        "Missing or invalid credentials are rejected without creating a session.",
+        "Valid credentials attach the user identity to the session.",
+        "New OAuth users bootstrap a default workspace exactly once."
+      ],
+      "outcomeClasses": [
+        "success",
+        "validation_error",
+        "duplicate"
+      ],
+      "evidence": [
+        "response",
+        "storage_write"
+      ],
+      "fidelity": "simulated",
+      "ownerTests": [
+        "src/test/auth.unit.test.ts"
+      ]
+    },
+    {
+      "id": "request.apps-contract",
+      "surface": "request-boundary",
+      "sourcePatterns": [
+        "src/app/api/apps/route.ts",
+        "src/app/api/apps/[appId]/route.ts",
+        "src/app/api/apps/search/route.ts"
+      ],
+      "event": "App management or store-search HTTP routes are called.",
+      "outcomes": [
+        "Authentication and workspace ownership are enforced.",
+        "Validation, duplicate detection, not-found responses, and success payloads are stable."
+      ],
+      "outcomeClasses": [
+        "success",
+        "validation_error",
+        "duplicate",
+        "not_found",
+        "auth_denied"
+      ],
+      "evidence": [
+        "response"
+      ],
+      "fidelity": "simulated",
+      "ownerTests": [
+        "src/test/api-routes.test.ts",
+        "src/test/api-routes/apps.integration.test.ts"
+      ]
+    },
+    {
+      "id": "request.alerts-contract",
+      "surface": "request-boundary",
+      "sourcePatterns": [
+        "src/app/api/alerts/**/route.ts"
+      ],
+      "event": "Alert and notification routes are invoked.",
+      "outcomes": [
+        "Rule CRUD, log reads, and derived alert queries preserve their request/response contracts."
+      ],
+      "outcomeClasses": [
+        "success",
+        "auth_denied"
+      ],
+      "evidence": [
+        "response"
+      ],
+      "fidelity": "simulated",
+      "ownerTests": [
+        "src/test/api-routes/alerts-main.integration.test.ts",
+        "src/test/api-routes/alerts.integration.test.ts"
+      ]
+    },
+    {
+      "id": "request.competitors-and-creatives-contract",
+      "surface": "request-boundary",
+      "sourcePatterns": [
+        "src/app/api/competitors/**/route.ts",
+        "src/app/api/creatives/**/route.ts"
+      ],
+      "event": "Competitor intelligence or creative-analysis routes are requested.",
+      "outcomes": [
+        "Required params are enforced and success payloads remain stable for lookup, add, delete, and analysis endpoints."
+      ],
+      "outcomeClasses": [
+        "success",
+        "validation_error"
+      ],
+      "evidence": [
+        "response"
+      ],
+      "fidelity": "simulated",
+      "ownerTests": [
+        "src/test/api-routes/competitors.integration.test.ts",
+        "src/test/api-routes/competitors-metadata-diff.integration.test.ts",
+        "src/test/api-routes/creatives.integration.test.ts"
+      ]
+    },
+    {
+      "id": "request.dashboard-workspace-team-contract",
+      "surface": "request-boundary",
+      "sourcePatterns": [
+        "src/app/api/dashboard/**/route.ts",
+        "src/app/api/workspace/route.ts",
+        "src/app/api/team/**/route.ts",
+        "src/app/api/analytics/status/route.ts"
+      ],
+      "event": "Dashboard, workspace, team, or analytics status routes are requested.",
+      "outcomes": [
+        "Auth gates hold, derived dashboard shapes stay stable, and workspace/team mutations return contract-safe responses."
+      ],
+      "outcomeClasses": [
+        "success",
+        "auth_denied"
+      ],
+      "evidence": [
+        "response"
+      ],
+      "fidelity": "simulated",
+      "ownerTests": [
+        "src/test/api-routes/dashboard-workspace-team.integration.test.ts"
+      ]
+    },
+    {
+      "id": "request.invitations-and-reports-contract",
+      "surface": "request-boundary",
+      "sourcePatterns": [
+        "src/app/api/invitations/**/route.ts",
+        "src/app/api/reports/route.ts",
+        "src/app/api/auth/register/route.ts"
+      ],
+      "event": "Invitation, registration, or report-generation routes are called.",
+      "outcomes": [
+        "Invitation lookup and accept contracts remain stable.",
+        "Registration and report generation enforce validation and return the documented response shapes."
+      ],
+      "outcomeClasses": [
+        "success",
+        "validation_error",
+        "not_found"
+      ],
+      "evidence": [
+        "response",
+        "storage_write"
+      ],
+      "fidelity": "simulated",
+      "ownerTests": [
+        "src/test/api-routes/invitations.integration.test.ts",
+        "src/test/api-routes/reports-auth.integration.test.ts"
+      ]
+    },
+    {
+      "id": "request.keywords-and-rankings-contract",
+      "surface": "request-boundary",
+      "sourcePatterns": [
+        "src/app/api/keywords/**/route.ts",
+        "src/app/api/rankings/**/route.ts"
+      ],
+      "event": "Keyword tracking or ranking routes are called.",
+      "outcomes": [
+        "Track, delete, simulate, difficulty, autocomplete, trends, charts, and anomaly endpoints enforce stable request/response contracts."
+      ],
+      "outcomeClasses": [
+        "success",
+        "validation_error"
+      ],
+      "evidence": [
+        "response"
+      ],
+      "fidelity": "simulated",
+      "ownerTests": [
+        "src/test/api-routes/keyword-ranks.integration.test.ts",
+        "src/test/api-routes/keywords.integration.test.ts",
+        "src/test/api-routes/keywords-advanced.integration.test.ts",
+        "src/test/api-routes/rankings.integration.test.ts"
+      ]
+    },
+    {
+      "id": "request.metadata-and-reviews-contract",
+      "surface": "request-boundary",
+      "sourcePatterns": [
+        "src/app/api/metadata/**/route.ts",
+        "src/app/api/reviews/**/route.ts"
+      ],
+      "event": "Metadata-analysis or review-analysis routes are called.",
+      "outcomes": [
+        "Review and metadata endpoints preserve their validation, analysis, and reporting contracts."
+      ],
+      "outcomeClasses": [
+        "success",
+        "validation_error"
+      ],
+      "evidence": [
+        "response"
+      ],
+      "fidelity": "simulated",
+      "ownerTests": [
+        "src/test/api-routes/metadata.integration.test.ts",
+        "src/test/api-routes/reviews.integration.test.ts",
+        "src/test/api-routes/reviews-analyze-batch.integration.test.ts"
+      ]
+    },
+    {
+      "id": "request.performance-and-market-contract",
+      "surface": "request-boundary",
+      "sourcePatterns": [
+        "src/app/api/performance/**/route.ts",
+        "src/app/api/store-search/**/route.ts",
+        "src/app/api/google-play/**/route.ts",
+        "src/app/api/apple-ads/**/route.ts"
+      ],
+      "event": "Performance, store-search, Google Play, or Apple Ads routes are requested.",
+      "outcomes": [
+        "Credential-gated and market-intelligence endpoints keep stable validation and response contracts."
+      ],
+      "outcomeClasses": [
+        "success",
+        "validation_error",
+        "auth_denied"
+      ],
+      "evidence": [
+        "response"
+      ],
+      "fidelity": "simulated",
+      "ownerTests": [
+        "src/test/api-routes/performance.integration.test.ts",
+        "src/test/api-routes/store-google-apple.integration.test.ts"
+      ]
+    },
+    {
+      "id": "request.cron-secret-gates",
+      "surface": "request-boundary",
+      "sourcePatterns": [
+        "src/app/api/cron/**/route.ts"
+      ],
+      "event": "Cron routes are invoked by a scheduler.",
+      "outcomes": [
+        "Missing or invalid secrets are rejected.",
+        "Valid invocations return processing summaries."
+      ],
+      "outcomeClasses": [
+        "success",
+        "auth_denied",
+        "validation_error"
+      ],
+      "evidence": [
+        "response"
+      ],
+      "fidelity": "simulated",
+      "ownerTests": [
+        "src/test/api-routes/cron.integration.test.ts"
+      ]
+    },
+    {
+      "id": "client.app-bootstrap-selection",
+      "surface": "app-bootstrap",
+      "sourcePatterns": [
+        "src/components/providers.tsx",
+        "src/lib/app-context.tsx"
+      ],
+      "event": "The dashboard shell boots with app and locale context providers.",
+      "outcomes": [
+        "The first own app is auto-selected when available.",
+        "Fallback selection and app/country changes propagate through context."
+      ],
+      "outcomeClasses": [
+        "success"
+      ],
+      "evidence": [
+        "state_transition",
+        "derived_view"
+      ],
+      "fidelity": "simulated",
+      "ownerTests": [
+        "src/test/app-context.component.test.tsx"
+      ]
+    },
+    {
+      "id": "client.auth-pages-transitions",
+      "surface": "client-state",
       "sourcePatterns": [
         "src/app/(auth)/login/page.tsx",
         "src/app/(auth)/register/page.tsx"
       ],
-      "event": "A user submits authentication forms.",
+      "event": "A user submits login or registration forms.",
       "outcomes": [
-        "Validation, failure, and redirect transitions stay observable."
+        "Validation, failure, and successful redirect transitions remain visible to the user."
+      ],
+      "outcomeClasses": [
+        "success",
+        "validation_error",
+        "failure",
+        "redirect"
       ],
       "evidence": [
         "state_transition",
@@ -142,22 +610,305 @@
       ]
     },
     {
-      "id": "background-execution.process-scheduled-jobs",
-      "surface": "background-execution",
+      "id": "client.invitation-transitions",
+      "surface": "client-state",
       "sourcePatterns": [
-        "src/workers/index.ts"
+        "src/app/invitations/accept/page.tsx"
       ],
-      "event": "Schedulers enqueue data-collection jobs for active apps.",
+      "event": "A user lands on and accepts an invitation link.",
       "outcomes": [
-        "Jobs are enqueued with the expected payloads and processed by the right worker handler."
+        "The page moves through loading, ready, accepting, success, and error states with visible evidence."
+      ],
+      "outcomeClasses": [
+        "success",
+        "failure",
+        "redirect"
       ],
       "evidence": [
-        "job_enqueue",
-        "job_process"
+        "state_transition",
+        "redirect"
       ],
       "fidelity": "simulated",
       "ownerTests": [
-        "src/test/workers.unit.test.ts"
+        "src/test/invitation-accept.component.test.tsx"
+      ]
+    },
+    {
+      "id": "client.header-runtime-controls",
+      "surface": "client-state",
+      "sourcePatterns": [
+        "src/components/layout/header.tsx",
+        "src/lib/i18n/index.ts"
+      ],
+      "event": "A user changes app, language, country, or signs out from the global header.",
+      "outcomes": [
+        "Header menus open and close correctly and propagate selection events through runtime state."
+      ],
+      "outcomeClasses": [
+        "success"
+      ],
+      "evidence": [
+        "state_transition",
+        "derived_view"
+      ],
+      "fidelity": "simulated",
+      "ownerTests": [
+        "src/test/header.component.test.tsx",
+        "src/test/i18n.unit.test.tsx"
+      ]
+    },
+    {
+      "id": "client.dashboard-surface-states",
+      "surface": "client-state",
+      "sourcePatterns": [
+        "src/app/(dashboard)/page.tsx"
+      ],
+      "event": "The main dashboard loads health data for the selected app.",
+      "outcomes": [
+        "Loading, empty, error, and success surfaces remain observable."
+      ],
+      "outcomeClasses": [
+        "success",
+        "failure"
+      ],
+      "evidence": [
+        "state_transition",
+        "derived_view"
+      ],
+      "fidelity": "simulated",
+      "ownerTests": [
+        "src/test/dashboard-page.component.test.tsx"
+      ]
+    },
+    {
+      "id": "client.settings-add-app-flow",
+      "surface": "client-state",
+      "sourcePatterns": [
+        "src/app/(dashboard)/settings/page.tsx"
+      ],
+      "event": "A user opens the add-app modal, searches, and adds an app from Settings.",
+      "outcomes": [
+        "Debounced search results or search errors become visible.",
+        "Successful add closes the modal and invalidates app data."
+      ],
+      "outcomeClasses": [
+        "success",
+        "failure"
+      ],
+      "evidence": [
+        "state_transition",
+        "response"
+      ],
+      "fidelity": "simulated",
+      "ownerTests": [
+        "src/test/settings-page.component.test.tsx"
+      ]
+    },
+    {
+      "id": "domain.keyword-and-ranking-orchestration",
+      "surface": "workflow-orchestration",
+      "sourcePatterns": [
+        "src/server/services/keyword-service.ts",
+        "src/server/services/keyword-advanced-service.ts",
+        "src/server/services/ranking-advanced-service.ts"
+      ],
+      "event": "Keyword or ranking domain logic is executed inside the service layer.",
+      "outcomes": [
+        "Scores, suggestions, cluster outputs, and anomaly decisions preserve their runtime contracts."
+      ],
+      "outcomeClasses": [
+        "success"
+      ],
+      "evidence": [
+        "derived_view"
+      ],
+      "fidelity": "simulated",
+      "ownerTests": [
+        "src/test/keyword-service.test.ts",
+        "src/test/keyword-service.unit.test.ts",
+        "src/test/keyword-advanced.unit.test.ts",
+        "src/test/ranking-advanced.unit.test.ts"
+      ]
+    },
+    {
+      "id": "domain.review-competitor-and-alert-orchestration",
+      "surface": "workflow-orchestration",
+      "sourcePatterns": [
+        "src/server/services/review-advanced-service.ts",
+        "src/server/services/competitor-advanced-service.ts",
+        "src/server/services/alert-service.ts",
+        "src/server/services/alert-advanced-service.ts"
+      ],
+      "event": "Review, competitor, or alert domain logic executes in response to data changes.",
+      "outcomes": [
+        "Comparisons, classifications, benchmark reports, and alert evaluations stay deterministic at the service boundary."
+      ],
+      "outcomeClasses": [
+        "success"
+      ],
+      "evidence": [
+        "derived_view"
+      ],
+      "fidelity": "simulated",
+      "ownerTests": [
+        "src/test/review-advanced.unit.test.ts",
+        "src/test/competitor-advanced.unit.test.ts",
+        "src/test/alert-service.test.ts",
+        "src/test/alert-advanced-service.test.ts",
+        "src/test/alert-notifications.unit.test.ts"
+      ]
+    },
+    {
+      "id": "domain.metadata-reporting-and-enterprise-orchestration",
+      "surface": "workflow-orchestration",
+      "sourcePatterns": [
+        "src/server/services/creative-service.ts",
+        "src/server/services/dashboard-service.ts",
+        "src/server/services/enterprise-service.ts",
+        "src/server/services/metadata-advanced-service.ts",
+        "src/server/services/performance-service.ts",
+        "src/server/services/report-service.ts",
+        "src/server/services/translation-service.ts"
+      ],
+      "event": "Metadata, reporting, dashboard, enterprise, and translation services run inside the app boundary.",
+      "outcomes": [
+        "Generated reports, dashboard aggregates, metadata analyses, and enterprise mutations keep their expected runtime semantics."
+      ],
+      "outcomeClasses": [
+        "success"
+      ],
+      "evidence": [
+        "derived_view"
+      ],
+      "fidelity": "simulated",
+      "ownerTests": [
+        "src/test/creative-service.test.ts",
+        "src/test/dashboard-service.test.ts",
+        "src/test/enterprise.integration.test.ts",
+        "src/test/metadata-advanced-service.test.ts",
+        "src/test/metadata-advanced.integration.test.ts",
+        "src/test/performance-service.test.ts",
+        "src/test/report-service.integration.test.ts",
+        "src/test/translation-service.integration.test.ts"
+      ]
+    },
+    {
+      "id": "background.keyword-and-metadata-processing",
+      "surface": "background-execution",
+      "sourcePatterns": [
+        "src/workers/index.ts",
+        "src/app/api/cron/collect-keywords/route.ts"
+      ],
+      "event": "Keyword rank and metadata snapshot jobs are scheduled or processed.",
+      "outcomes": [
+        "Active targets are enqueued, snapshots are created only when changed, and summary counts are returned."
+      ],
+      "outcomeClasses": [
+        "success",
+        "skipped"
+      ],
+      "evidence": [
+        "job_enqueue",
+        "job_process",
+        "storage_write"
+      ],
+      "fidelity": "simulated",
+      "ownerTests": [
+        "src/test/workers.unit.test.ts",
+        "src/test/api-routes/cron.integration.test.ts"
+      ]
+    },
+    {
+      "id": "background.review-and-sentiment-processing",
+      "surface": "background-execution",
+      "sourcePatterns": [
+        "src/workers/index.ts",
+        "src/app/api/cron/analyze-sentiment/route.ts",
+        "src/app/api/cron/collect-reviews/route.ts"
+      ],
+      "event": "Review collection and sentiment analysis jobs are scheduled or processed.",
+      "outcomes": [
+        "Reviews are deduplicated, sentiment jobs are enqueued, and already-analyzed reviews are skipped."
+      ],
+      "outcomeClasses": [
+        "success",
+        "duplicate",
+        "skipped"
+      ],
+      "evidence": [
+        "job_enqueue",
+        "job_process",
+        "storage_write"
+      ],
+      "fidelity": "simulated",
+      "ownerTests": [
+        "src/test/workers.unit.test.ts",
+        "src/test/api-routes/cron.integration.test.ts"
+      ]
+    },
+    {
+      "id": "external.provider-contracts",
+      "surface": "external-contracts",
+      "sourcePatterns": [
+        "src/lib/anthropic.ts",
+        "src/server/ai-service.ts",
+        "src/server/itunes-api.ts",
+        "src/server/review-collector.ts",
+        "src/server/services/apple-ads-service.ts",
+        "src/server/services/google-play-service.ts",
+        "src/server/services/store-search-service.ts"
+      ],
+      "event": "The platform interprets responses from App Store, Google Play, Apple Ads, Anthropic, or related market APIs.",
+      "outcomes": [
+        "Happy-path parsing, sparse responses, malformed data, rate limits, and network failures all preserve a stable adapter contract."
+      ],
+      "outcomeClasses": [
+        "success",
+        "provider_failure",
+        "schema_drift"
+      ],
+      "evidence": [
+        "external_call",
+        "response",
+        "derived_view"
+      ],
+      "fidelity": "contract",
+      "ownerTests": [
+        "src/test/ai-service.test.ts",
+        "src/test/anthropic.unit.test.ts",
+        "src/test/apple-ads-service.unit.test.ts",
+        "src/test/fault-injection.integration.test.ts",
+        "src/test/google-play.unit.test.ts",
+        "src/test/itunes-api.test.ts",
+        "src/test/review-collector.test.ts",
+        "src/test/store-search.integration.test.ts"
+      ]
+    },
+    {
+      "id": "property.runtime-invariants",
+      "surface": "runtime-invariants",
+      "sourcePatterns": [
+        "src/lib/utils.ts",
+        "src/server/itunes-api.ts",
+        "src/server/services/metadata-advanced-service.ts"
+      ],
+      "event": "Wide input domains exercise invariant-heavy runtime code.",
+      "outcomes": [
+        "Scoring, formatting, analysis, and rate-limiting helpers preserve invariants across broad randomized inputs."
+      ],
+      "outcomeClasses": [
+        "success"
+      ],
+      "evidence": [
+        "derived_view"
+      ],
+      "fidelity": "isolated",
+      "ownerTests": [
+        "src/test/property/anomaly-detection.property.test.ts",
+        "src/test/property/description-analysis.property.test.ts",
+        "src/test/property/policy-compliance.property.test.ts",
+        "src/test/property/rate-limiter.property.test.ts",
+        "src/test/property/utils.property.test.ts"
       ]
     }
   ]

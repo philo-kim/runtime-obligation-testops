@@ -1,6 +1,6 @@
 {
   "name": "runtime-obligation-testops",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Runtime-obligation-first TestOps control plane for any software project.",
   "license": "MIT",
   "type": "module",
@@ -24,6 +24,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "dev": "tsx src/cli.ts",
+    "prepare": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest"
   },

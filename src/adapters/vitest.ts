@@ -33,6 +33,60 @@ function vitestSurfaces(controlPlane: RuntimeControlPlane): Surface[] {
   return controlPlane.surfaces.filter((surface) => surface.execution?.runner === "vitest");
 }
 
+export interface VitestProjectConfig {
+  test: {
+    name: string;
+    environment: string;
+    setupFiles: string[];
+    include: string[];
+    exclude?: string[];
+    testTimeout?: number;
+    globals: boolean;
+  };
+  resolve?: {
+    alias: Record<string, string>;
+  };
+}
+
+export function buildVitestWorkspaceProjects(
+  controlPlane: RuntimeControlPlane,
+  options: VitestWorkspaceOptions = {},
+): VitestProjectConfig[] {
+  const surfaces = vitestSurfaces(controlPlane);
+  if (surfaces.length === 0) {
+    throw new Error("No surfaces with execution.runner='vitest' were found");
+  }
+
+  return surfaces.map((surface) => {
+    const execution = surface.execution ?? {};
+    const environment = execution.environment ?? "node";
+    const setupFiles = execution.setupFiles ?? [];
+    const include = execution.include ?? surface.testPatterns;
+    const exclude = execution.exclude ?? [];
+
+    return {
+      test: {
+        name: surface.id,
+        environment,
+        setupFiles,
+        include,
+        ...(exclude.length > 0 ? { exclude } : {}),
+        ...(execution.testTimeout ? { testTimeout: execution.testTimeout } : {}),
+        globals: true,
+      },
+      ...(options.aliases && Object.keys(options.aliases).length > 0
+        ? {
+            resolve: {
+              alias: Object.fromEntries(
+                Object.entries(options.aliases).map(([key, value]) => [key, value]),
+              ),
+            },
+          }
+        : {}),
+    };
+  });
+}
+
 export function generateVitestWorkspace(
   controlPlane: RuntimeControlPlane,
   options: VitestWorkspaceOptions = {},

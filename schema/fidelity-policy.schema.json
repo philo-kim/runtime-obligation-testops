@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://runtime-obligation-testops.dev/schema/fidelity-policy.schema.json",
+  "title": "Fidelity Policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "principle",
+    "fidelityLevels"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "principle": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fidelityLevels": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "defaultMinimumFidelity": {
+      "type": "string",
+      "minLength": 1
+    },
+    "surfacePolicies": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/surfacePolicy"
+      }
+    },
+    "inventorySourcePolicies": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/inventorySourcePolicy"
+      }
+    },
+    "obligationPolicies": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/obligationPolicy"
+      }
+    }
+  },
+  "$defs": {
+    "surfacePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "surfaceId",
+        "minimumFidelity"
+      ],
+      "properties": {
+        "surfaceId": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "minimumFidelity": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "inventorySourcePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "inventorySourceId",
+        "minimumFidelity"
+      ],
+      "properties": {
+        "inventorySourceId": {
+          "type": "string",
+          "pattern": "^[a-z0-9.-]+$"
+        },
+        "minimumFidelity": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "obligationPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "obligationId",
+        "minimumFidelity"
+      ],
+      "properties": {
+        "obligationId": {
+          "type": "string",
+          "pattern": "^[a-z0-9.-]+$"
+        },
+        "minimumFidelity": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

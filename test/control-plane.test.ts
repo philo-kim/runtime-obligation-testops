@@ -2,8 +2,19 @@ import os from "node:os";
 import path from "node:path";
 import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
-import { generateVitestWorkspace, initWorkspace, validateControlPlane } from "../src/index.js";
-import type { RuntimeControlPlane } from "../src/index.js";
+import {
+  analyzeImpact,
+  deriveSurfaceCatalog,
+  generateVitestWorkspace,
+  initWorkspace,
+  scanRuntimeInventory,
+  validateControlPlane,
+} from "../src/index.js";
+import type {
+  FidelityPolicy,
+  RuntimeControlPlane,
+  RuntimeInventory,
+} from "../src/index.js";
 
 const tempDirs: string[] = [];
 
@@ -19,27 +30,62 @@ function writeProjectFile(root: string, relativePath: string, contents: string):
   writeFileSync(absolutePath, contents);
 }
 
-function makeBaseControlPlane(): RuntimeControlPlane {
+function makeInventory(): RuntimeInventory {
   return {
     version: "1.0.0",
-    principle: "automated testing is managed against the full set of runtime obligations",
+    principle: "runtime obligations",
+    sourceKinds: ["request"],
+    sources: [
+      {
+        id: "request-entry",
+        description: "Request entrypoint",
+        kind: "request",
+        sourcePatterns: ["src/entry.ts"],
+        events: ["A request enters the system."],
+        expectedEvidence: ["response"],
+        expectedOutcomeClasses: ["success"],
+        surfaceHint: "request-boundary",
+        minimumFidelity: "simulated",
+      },
+    ],
+  };
+}
+
+function makeControlPlane(): RuntimeControlPlane {
+  return {
+    version: "1.0.0",
+    principle: "runtime obligations",
     evidenceKinds: ["response", "state_transition"],
-    fidelityLevels: ["simulated", "contract"],
+    fidelityLevels: [
+      "isolated",
+      "simulated",
+      "contract",
+      "real-dependency",
+      "full-system",
+    ],
     surfaces: [
       {
-        id: "entry",
-        description: "Runtime entry surface",
-        sourcePatterns: ["src/**/*.ts"],
-        testPatterns: ["test/**/*.test.ts"],
+        id: "request-boundary",
+        description: "Request surface",
+        sourcePatterns: ["src/entry.ts"],
+        testPatterns: ["test/entry.test.ts"],
+        execution: {
+          runner: "vitest",
+          environment: "node",
+          setupFiles: ["test/setup.ts"],
+          include: ["test/entry.test.ts"],
+          testTimeout: 5000,
+        },
       },
     ],
     obligations: [
       {
-        id: "entry.success",
-        surface: "entry",
+        id: "request-entry.success",
+        surface: "request-boundary",
         sourcePatterns: ["src/entry.ts"],
         event: "A request enters the system.",
-        outcomes: ["A response is produced."],
+        outcomes: ["A response is produced successfully."],
+        outcomeClasses: ["success"],
         evidence: ["response"],
         fidelity: "simulated",
         ownerTests: ["test/entry.test.ts"],
@@ -55,76 +101,138 @@ afterEach(() => {
 });
 
 describe("validateControlPlane", () => {
-  it("passes when runtime sources, annotations, and owner tests line up", () => {
+  it("passes when inventory, surfaces, obligations, and annotations line up", () => {
     const root = makeTempDir();
     writeProjectFile(root, "src/entry.ts", "export const entry = true;\n");
     writeProjectFile(
       root,
       "test/entry.test.ts",
-      "// runtime-obligations: entry.success\nexport const testFile = true;\n",
+      "// runtime-obligations: request-entry.success\nexport const testFile = true;\n",
     );
 
-    const summary = validateControlPlane(makeBaseControlPlane(), root);
+    const inventory = makeInventory();
+    const surfaceCatalog = deriveSurfaceCatalog(inventory);
+    const summary = validateControlPlane(makeControlPlane(), root, {
+      inventory,
+      surfaceCatalog,
+    });
 
     expect(summary.issues).toEqual([]);
   });
 
-  it("reports uncovered sources, orphan tests, and missing annotations", () => {
+  it("reports completeness and fidelity regressions", () => {
     const root = makeTempDir();
     writeProjectFile(root, "src/entry.ts", "export const entry = true;\n");
-    writeProjectFile(root, "src/uncovered.ts", "export const uncovered = true;\n");
-    writeProjectFile(root, "test/entry.test.ts", "export const testFile = true;\n");
     writeProjectFile(
       root,
-      "test/orphan.test.ts",
-      "// runtime-obligations: entry.other\nexport const orphan = true;\n",
+      "test/entry.test.ts",
+      "// runtime-obligations: request-entry.success\nexport const testFile = true;\n",
     );
 
-    const summary = validateControlPlane(makeBaseControlPlane(), root);
+    const inventory: RuntimeInventory = {
+      ...makeInventory(),
+      sources: [
+        {
+          ...makeInventory().sources[0],
+          expectedOutcomeClasses: ["success", "failure"],
+          minimumFidelity: "real-dependency",
+        },
+      ],
+    };
+    const fidelityPolicy: FidelityPolicy = {
+      version: "1.0.0",
+      principle: "runtime obligations",
+      fidelityLevels: [
+        "isolated",
+        "simulated",
+        "contract",
+        "real-dependency",
+        "full-system",
+      ],
+      defaultMinimumFidelity: "simulated",
+      surfacePolicies: [],
+      inventorySourcePolicies: [],
+      obligationPolicies: [],
+    };
+    const summary = validateControlPlane(makeControlPlane(), root, {
+      inventory,
+      surfaceCatalog: deriveSurfaceCatalog(inventory),
+      fidelityPolicy,
+    });
     const messages = summary.issues.map((issue) => issue.message);
 
     expect(messages).toContain(
-      "Owner test test/entry.test.ts is missing a runtime-obligations annotation",
+      "Inventory source request-entry is missing required outcome class failure",
     );
     expect(messages).toContain(
-      "Surface entry has an uncovered runtime source: src/uncovered.ts",
+      "Obligation request-entry.success has fidelity simulated, below required minimum real-dependency",
     );
-    expect(messages).toContain(
-      "Surface entry has an unreferenced owner test: test/orphan.test.ts",
+  });
+});
+
+describe("deriveSurfaceCatalog", () => {
+  it("derives runtime surfaces from inventory source hints", () => {
+    const catalog = deriveSurfaceCatalog(makeInventory());
+
+    expect(catalog.surfaces).toHaveLength(1);
+    expect(catalog.surfaces[0].id).toBe("request-boundary");
+    expect(catalog.surfaces[0].inventorySourceIds).toEqual(["request-entry"]);
+  });
+});
+
+describe("analyzeImpact", () => {
+  it("maps changed runtime files to inventory sources, surfaces, obligations, and tests", () => {
+    const root = makeTempDir();
+    writeProjectFile(root, "src/entry.ts", "export const entry = true;\n");
+    writeProjectFile(
+      root,
+      "test/entry.test.ts",
+      "// runtime-obligations: request-entry.success\nexport const testFile = true;\n",
     );
+
+    const inventory = makeInventory();
+    const impact = analyzeImpact(
+      root,
+      {
+        controlPlane: makeControlPlane(),
+        inventory,
+        surfaceCatalog: deriveSurfaceCatalog(inventory),
+      },
+      ["src/entry.ts"],
+    );
+
+    expect(impact.impactedInventorySources).toEqual(["request-entry"]);
+    expect(impact.impactedSurfaces).toEqual(["request-boundary"]);
+    expect(impact.impactedObligations).toEqual(["request-entry.success"]);
+    expect(impact.impactedOwnerTests).toEqual(["test/entry.test.ts"]);
   });
 });
 
 describe("generateVitestWorkspace", () => {
   it("renders a vitest workspace from runner-tagged surfaces", () => {
-    const controlPlane: RuntimeControlPlane = {
-      ...makeBaseControlPlane(),
-      surfaces: [
-        {
-          id: "entry",
-          description: "Runtime entry surface",
-          sourcePatterns: ["src/**/*.ts"],
-          testPatterns: ["test/**/*.test.ts"],
-          execution: {
-            runner: "vitest",
-            environment: "node",
-            setupFiles: ["test/setup.ts"],
-            include: ["test/**/*.test.ts"],
-            testTimeout: 5000,
-          },
-        },
-      ],
-    };
-
-    const output = generateVitestWorkspace(controlPlane, {
+    const output = generateVitestWorkspace(makeControlPlane(), {
       aliases: {
         "@": "./src",
       },
     });
 
-    expect(output).toContain('name: "entry"');
+    expect(output).toContain('name: "request-boundary"');
     expect(output).toContain('environment: "node"');
     expect(output).toContain('path.resolve(process.cwd(), "./src")');
+  });
+});
+
+describe("scanRuntimeInventory", () => {
+  it("detects common runtime entrypoint categories", () => {
+    const root = makeTempDir();
+    writeProjectFile(root, "src/middleware.ts", "export const middleware = true;\n");
+    writeProjectFile(root, "src/app/api/ping/route.ts", "export const GET = true;\n");
+    writeProjectFile(root, "src/workers/index.ts", "export const worker = true;\n");
+
+    const inventory = scanRuntimeInventory(root);
+    const ids = inventory.sources.map((source) => source.id).sort();
+
+    expect(ids).toEqual(["auth-access", "background-execution", "request-boundary"]);
   });
 });
 
@@ -135,7 +243,13 @@ describe("initWorkspace", () => {
 
     expect(result.written.length).toBeGreaterThan(0);
     expect(existsSync(path.join(root, "testops", "runtime-control-plane.json"))).toBe(true);
+    expect(existsSync(path.join(root, "testops", "runtime-inventory.json"))).toBe(true);
+    expect(existsSync(path.join(root, "testops", "runtime-surfaces.json"))).toBe(true);
+    expect(existsSync(path.join(root, "testops", "fidelity-policy.json"))).toBe(true);
     expect(existsSync(path.join(root, "testops", "runtime-control-plane.schema.json"))).toBe(true);
+    expect(existsSync(path.join(root, "testops", "runtime-inventory.schema.json"))).toBe(true);
+    expect(existsSync(path.join(root, "testops", "runtime-surfaces.schema.json"))).toBe(true);
+    expect(existsSync(path.join(root, "testops", "fidelity-policy.schema.json"))).toBe(true);
     expect(existsSync(path.join(root, ".github", "workflows", "testops-control.yml"))).toBe(true);
     expect(existsSync(path.join(root, "vitest.runtime.workspace.ts"))).toBe(true);
   });

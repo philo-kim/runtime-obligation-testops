@@ -1,15 +1,22 @@
 #!/usr/bin/env node
 import path from "node:path";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import {
   DEFAULT_CONFIG_PATH,
+  DEFAULT_FIDELITY_POLICY_PATH,
+  DEFAULT_INVENTORY_PATH,
   DEFAULT_REPORT_JSON_PATH,
   DEFAULT_REPORT_MD_PATH,
+  DEFAULT_SURFACES_PATH,
 } from "./constants.js";
-import { relativeToRoot, writeTextFile } from "./fs-utils.js";
-import { initWorkspace } from "./init.js";
-import { writeReports } from "./report.js";
 import { generateVitestWorkspace } from "./adapters/vitest.js";
+import { deriveSurfaceCatalog } from "./derivation.js";
+import { writeTextFile } from "./fs-utils.js";
+import { analyzeImpact } from "./impact.js";
+import { initWorkspace } from "./init.js";
+import { scanRuntimeInventory } from "./inventory.js";
+import { loadProjectModel } from "./model.js";
+import { writeReports } from "./report.js";
 import { printSummary, validateControlPlane } from "./validation.js";
 import type { RuntimeControlPlane } from "./types.js";
 
@@ -65,6 +72,10 @@ function hasFlag(parsed: ParsedArgs, name: string): boolean {
   return parsed.flags.has(name);
 }
 
+function resolveRoot(parsed: ParsedArgs): string {
+  return path.resolve(getFlag(parsed, "root", process.cwd()) ?? process.cwd());
+}
+
 function loadControlPlane(repoRoot: string, configPath: string): RuntimeControlPlane {
   const absoluteConfigPath = path.isAbsolute(configPath)
     ? configPath
@@ -73,36 +84,92 @@ function loadControlPlane(repoRoot: string, configPath: string): RuntimeControlP
   return JSON.parse(readFileSync(absoluteConfigPath, "utf8")) as RuntimeControlPlane;
 }
 
+function maybeWriteJson(filePath: string, value: unknown): void {
+  writeTextFile(filePath, JSON.stringify(value, null, 2) + "\n");
+}
+
 function printHelp(): void {
   console.log("runtime-obligation-testops");
   console.log("");
   console.log("Commands:");
   console.log("  rotops init [--preset vitest] [--force]");
-  console.log("  rotops validate [--config path] [--root path] [--allow-missing-annotations]");
-  console.log("  rotops report [--config path] [--root path] [--allow-missing-annotations]");
-  console.log("  rotops export vitest-workspace [--config path] [--root path] [--out path] [--alias @=./src]");
+  console.log("  rotops inventory scan [--root path] [--out path]");
+  console.log("  rotops surfaces derive [--root path] [--inventory path] [--out path]");
+  console.log(
+    "  rotops validate [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--root path] [--allow-missing-annotations]",
+  );
+  console.log(
+    "  rotops report [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--root path] [--allow-missing-annotations]",
+  );
+  console.log(
+    "  rotops impact [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--root path] --changed path [--changed path]",
+  );
+  console.log(
+    "  rotops export vitest-workspace [--config path] [--root path] [--out path] [--alias @=./src]",
+  );
 }
 
 function commandInit(parsed: ParsedArgs): void {
-  const targetDir = path.resolve(getFlag(parsed, "root", process.cwd()) ?? process.cwd());
+  const targetDir = resolveRoot(parsed);
   const preset = (getFlag(parsed, "preset", "base") ?? "base") as "base" | "vitest";
   const result = initWorkspace(targetDir, preset, hasFlag(parsed, "force"));
 
   for (const written of result.written) {
-    console.log(`written ${relativeToRoot(targetDir, written)}`);
+    console.log(path.relative(targetDir, written) || ".");
   }
 
   for (const skipped of result.skipped) {
-    console.log(`skipped ${relativeToRoot(targetDir, skipped)}`);
+    console.log(`skipped ${path.relative(targetDir, skipped) || "."}`);
   }
 }
 
+function commandInventoryScan(parsed: ParsedArgs): void {
+  const repoRoot = resolveRoot(parsed);
+  const outputPath = path.resolve(
+    repoRoot,
+    getFlag(parsed, "out", DEFAULT_INVENTORY_PATH) ?? DEFAULT_INVENTORY_PATH,
+  );
+  const inventory = scanRuntimeInventory(repoRoot);
+  maybeWriteJson(outputPath, inventory);
+  console.log(path.relative(repoRoot, outputPath));
+}
+
+function commandSurfaceDerive(parsed: ParsedArgs): void {
+  const repoRoot = resolveRoot(parsed);
+  const inventoryPath = getFlag(parsed, "inventory", DEFAULT_INVENTORY_PATH) ?? DEFAULT_INVENTORY_PATH;
+  const model = loadProjectModel(repoRoot, {
+    controlPlanePath: getFlag(parsed, "config", DEFAULT_CONFIG_PATH),
+    inventoryPath,
+    surfaceCatalogPath: getFlag(parsed, "surfaces", DEFAULT_SURFACES_PATH),
+    fidelityPolicyPath: getFlag(parsed, "fidelity", DEFAULT_FIDELITY_POLICY_PATH),
+  });
+
+  if (!model.inventory) {
+    throw new Error(`Inventory file not found: ${inventoryPath}`);
+  }
+
+  const outputPath = path.resolve(
+    repoRoot,
+    getFlag(parsed, "out", DEFAULT_SURFACES_PATH) ?? DEFAULT_SURFACES_PATH,
+  );
+  const catalog = deriveSurfaceCatalog(model.inventory);
+  maybeWriteJson(outputPath, catalog);
+  console.log(path.relative(repoRoot, outputPath));
+}
+
 function validateAndMaybeReport(parsed: ParsedArgs, reportOnly: boolean): void {
-  const repoRoot = path.resolve(getFlag(parsed, "root", process.cwd()) ?? process.cwd());
-  const configPath = getFlag(parsed, "config", DEFAULT_CONFIG_PATH) ?? DEFAULT_CONFIG_PATH;
-  const controlPlane = loadControlPlane(repoRoot, configPath);
-  const summary = validateControlPlane(controlPlane, repoRoot, {
+  const repoRoot = resolveRoot(parsed);
+  const model = loadProjectModel(repoRoot, {
+    controlPlanePath: getFlag(parsed, "config", DEFAULT_CONFIG_PATH),
+    inventoryPath: getFlag(parsed, "inventory", DEFAULT_INVENTORY_PATH),
+    surfaceCatalogPath: getFlag(parsed, "surfaces", DEFAULT_SURFACES_PATH),
+    fidelityPolicyPath: getFlag(parsed, "fidelity", DEFAULT_FIDELITY_POLICY_PATH),
+  });
+  const summary = validateControlPlane(model.controlPlane, repoRoot, {
     requireAnnotations: !hasFlag(parsed, "allow-missing-annotations"),
+    inventory: model.inventory,
+    surfaceCatalog: model.surfaceCatalog,
+    fidelityPolicy: model.fidelityPolicy,
   });
 
   const reports = writeReports(
@@ -116,8 +183,8 @@ function validateAndMaybeReport(parsed: ParsedArgs, reportOnly: boolean): void {
 
   if (reportOnly) {
     console.log("");
-    console.log(relativeToRoot(repoRoot, reports.jsonPath));
-    console.log(relativeToRoot(repoRoot, reports.mdPath));
+    console.log(path.relative(repoRoot, reports.jsonPath));
+    console.log(path.relative(repoRoot, reports.mdPath));
   }
 
   if (summary.issues.some((issue) => issue.level === "error")) {
@@ -125,8 +192,30 @@ function validateAndMaybeReport(parsed: ParsedArgs, reportOnly: boolean): void {
   }
 }
 
+function commandImpact(parsed: ParsedArgs): void {
+  const repoRoot = resolveRoot(parsed);
+  const changedFiles = [
+    ...getFlagValues(parsed, "changed"),
+    ...parsed._.slice(1),
+  ].map((file) => path.isAbsolute(file) ? path.relative(repoRoot, file) : file);
+
+  if (changedFiles.length === 0) {
+    throw new Error("rotops impact requires at least one --changed file");
+  }
+
+  const model = loadProjectModel(repoRoot, {
+    controlPlanePath: getFlag(parsed, "config", DEFAULT_CONFIG_PATH),
+    inventoryPath: getFlag(parsed, "inventory", DEFAULT_INVENTORY_PATH),
+    surfaceCatalogPath: getFlag(parsed, "surfaces", DEFAULT_SURFACES_PATH),
+    fidelityPolicyPath: getFlag(parsed, "fidelity", DEFAULT_FIDELITY_POLICY_PATH),
+  });
+
+  const impact = analyzeImpact(repoRoot, model, changedFiles);
+  console.log(JSON.stringify(impact, null, 2));
+}
+
 function commandExportVitestWorkspace(parsed: ParsedArgs): void {
-  const repoRoot = path.resolve(getFlag(parsed, "root", process.cwd()) ?? process.cwd());
+  const repoRoot = resolveRoot(parsed);
   const configPath = getFlag(parsed, "config", DEFAULT_CONFIG_PATH) ?? DEFAULT_CONFIG_PATH;
   const outputPath = path.resolve(
     repoRoot,
@@ -148,7 +237,7 @@ function commandExportVitestWorkspace(parsed: ParsedArgs): void {
   });
 
   writeTextFile(outputPath, contents);
-  console.log(relativeToRoot(repoRoot, outputPath));
+  console.log(path.relative(repoRoot, outputPath));
 }
 
 function main(): void {
@@ -159,11 +248,26 @@ function main(): void {
     case "init":
       commandInit(parsed);
       return;
+    case "inventory":
+      if (subcommand === "scan") {
+        commandInventoryScan(parsed);
+        return;
+      }
+      break;
+    case "surfaces":
+      if (subcommand === "derive") {
+        commandSurfaceDerive(parsed);
+        return;
+      }
+      break;
     case "validate":
       validateAndMaybeReport(parsed, false);
       return;
     case "report":
       validateAndMaybeReport(parsed, true);
+      return;
+    case "impact":
+      commandImpact(parsed);
       return;
     case "export":
       if (subcommand === "vitest-workspace") {

@@ -10,8 +10,8 @@ function templatePath(...parts: string[]): string {
   return path.join(packageRoot, "templates", ...parts);
 }
 
-function schemaPath(): string {
-  return path.join(packageRoot, "schema", "runtime-control-plane.schema.json");
+function schemaPath(fileName: string): string {
+  return path.join(packageRoot, "schema", fileName);
 }
 
 export function initWorkspace(
@@ -30,8 +30,32 @@ export function initWorkspace(
       destination: path.join(targetDir, "testops", "runtime-control-plane.json"),
     },
     {
-      source: schemaPath(),
+      source: templatePath("base", "runtime-inventory.json"),
+      destination: path.join(targetDir, "testops", "runtime-inventory.json"),
+    },
+    {
+      source: templatePath("base", "runtime-surfaces.json"),
+      destination: path.join(targetDir, "testops", "runtime-surfaces.json"),
+    },
+    {
+      source: templatePath("base", "fidelity-policy.json"),
+      destination: path.join(targetDir, "testops", "fidelity-policy.json"),
+    },
+    {
+      source: schemaPath("runtime-control-plane.schema.json"),
       destination: path.join(targetDir, "testops", "runtime-control-plane.schema.json"),
+    },
+    {
+      source: schemaPath("runtime-inventory.schema.json"),
+      destination: path.join(targetDir, "testops", "runtime-inventory.schema.json"),
+    },
+    {
+      source: schemaPath("runtime-surfaces.schema.json"),
+      destination: path.join(targetDir, "testops", "runtime-surfaces.schema.json"),
+    },
+    {
+      source: schemaPath("fidelity-policy.schema.json"),
+      destination: path.join(targetDir, "testops", "fidelity-policy.schema.json"),
     },
     {
       source: templatePath("github", "testops-control.yml"),

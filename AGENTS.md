@@ -13,8 +13,8 @@ When changing this repository:
    - outcome closure
    - observability
    - traceability
-2. Keep the control-plane schema generic. Do not hardcode one framework unless it is explicitly inside an adapter.
-3. Keep validators framework-agnostic. Runner-specific behavior belongs in adapters.
+2. Keep inventory, surface, control-plane, and fidelity artifacts aligned.
+3. Keep schemas and validators framework-agnostic. Runner-specific behavior belongs in adapters.
 4. If templates change, update docs and tests in the same change.
 5. If the CLI output changes, update the example files and the README.
 

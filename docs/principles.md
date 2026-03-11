@@ -61,3 +61,12 @@ Every obligation must be traceable:
 - back again when source code changes
 
 This package treats traceability drift as a first-class failure.
+
+## Operational implication
+
+The package therefore manages four connected artifacts:
+
+- runtime inventory: the full set of externally reachable runtime sources
+- surface catalog: the project-specific management partition over that inventory
+- control plane: the obligation, evidence, and owner-test graph
+- fidelity policy: the minimum proof strength expected for each layer of that graph

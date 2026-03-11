@@ -1,5 +1,10 @@
 # AppPulse Example
 
-This example shows how a real product can express its automated testing system as runtime surfaces and runtime obligations.
+This example shows how a real product can express its automated testing system through:
 
-The file is illustrative. It exists to show how to model a production application, not to validate inside this package repository.
+- runtime inventory
+- runtime surfaces
+- runtime obligations
+- fidelity policy
+
+The files are illustrative. They exist to show how to model a production application, not to validate inside this package repository.

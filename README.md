@@ -15,11 +15,15 @@ That obligation set must satisfy:
 
 ## What this package gives you
 
-- a generic runtime control-plane schema
-- a validator that checks uncovered runtime sources, orphan tests, and traceability drift
+- a runtime inventory model for extracting the full runtime testing denominator
+- a surface catalog model for deriving project-specific management surfaces
+- a runtime control plane for obligations, evidence, fidelity, and owner tests
+- a validator that checks completeness, observability, fidelity, and traceability drift
 - report generation in JSON and Markdown
 - initialization templates for a new repo
+- a runtime inventory scanner and surface derivation CLI
 - a Vitest workspace exporter for teams using Vitest
+- an impact analyzer for changed runtime files
 - AI-agent guidance for maintaining the control plane
 
 ## Install
@@ -32,6 +36,8 @@ npm install -D runtime-obligation-testops
 
 ```bash
 npx rotops init
+npx rotops inventory scan
+npx rotops surfaces derive
 npx rotops validate
 npx rotops report
 ```
@@ -44,7 +50,10 @@ npx rotops export vitest-workspace --out vitest.runtime.workspace.ts
 
 ## Core files
 
+- `testops/runtime-inventory.json`
+- `testops/runtime-surfaces.json`
 - `testops/runtime-control-plane.json`
+- `testops/fidelity-policy.json`
 - `testops/runtime-control-plane.schema.json`
 - `AGENTS.md`
 - `.github/workflows/testops-control.yml`
@@ -52,8 +61,11 @@ npx rotops export vitest-workspace --out vitest.runtime.workspace.ts
 ## Commands
 
 - `rotops init`
+- `rotops inventory scan`
+- `rotops surfaces derive`
 - `rotops validate`
 - `rotops report`
+- `rotops impact`
 - `rotops export vitest-workspace`
 
 ## How to think about it

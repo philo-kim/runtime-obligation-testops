@@ -1,4 +1,11 @@
-# Control-Plane Model
+# Runtime Model
+
+The package manages runtime verification in four linked artifacts:
+
+- `runtime-inventory.json`
+- `runtime-surfaces.json`
+- `runtime-control-plane.json`
+- `fidelity-policy.json`
 
 ## Runtime source
 
@@ -13,6 +20,13 @@ Examples:
 - worker processor
 - scheduler
 - external adapter
+
+Inventory sources define the denominator:
+
+- what can enter the system
+- where state can change
+- where background execution starts
+- where storage or provider boundaries exist
 
 ## Runtime surface
 
@@ -33,6 +47,19 @@ Each obligation records:
 - the evidence that must be externally observable
 - the fidelity level
 - the owner tests
+
+Obligations close the inventory with concrete proof.
+
+## Fidelity policy
+
+Fidelity policy defines the minimum proof strength expected for a surface, source, or obligation.
+
+This lets teams distinguish:
+
+- simulated proof
+- contract proof
+- real dependency proof
+- full-system proof
 
 ## Fidelity
 

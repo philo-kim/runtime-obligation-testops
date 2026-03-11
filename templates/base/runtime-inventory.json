@@ -1,0 +1,30 @@
+{
+  "$schema": "./runtime-inventory.schema.json",
+  "version": "1.0.0",
+  "principle": "automated testing is managed against the full set of runtime obligations",
+  "sourceKinds": [
+    "request"
+  ],
+  "sources": [
+    {
+      "id": "runtime-entry",
+      "description": "Replace this with a real runtime source for your project.",
+      "kind": "request",
+      "sourcePatterns": [
+        "src/**/*.ts"
+      ],
+      "events": [
+        "Replace this with a real external runtime event."
+      ],
+      "expectedEvidence": [
+        "response"
+      ],
+      "expectedOutcomeClasses": [
+        "success",
+        "failure"
+      ],
+      "surfaceHint": "runtime-entry",
+      "minimumFidelity": "simulated"
+    }
+  ]
+}

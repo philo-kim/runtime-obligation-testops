@@ -1,0 +1,557 @@
+{
+  "$schema": "./runtime-inventory.schema.json",
+  "version": "1.0.0",
+  "principle": "runtime-obligation-first",
+  "sourceKinds": [
+    "auth",
+    "background",
+    "bootstrap",
+    "external",
+    "invariant",
+    "request",
+    "ui-state",
+    "workflow"
+  ],
+  "sources": [
+    {
+      "id": "auth.middleware",
+      "description": "Protected-route gating at middleware entry.",
+      "kind": "auth",
+      "sourcePatterns": [
+        "src/middleware.ts"
+      ],
+      "events": [
+        "A request reaches a protected application path."
+      ],
+      "expectedEvidence": [
+        "redirect",
+        "response"
+      ],
+      "expectedOutcomeClasses": [
+        "success",
+        "auth_denied",
+        "redirect"
+      ],
+      "surfaceHint": "auth-access",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "auth.session-and-oauth",
+      "description": "Credential login and OAuth bootstrap logic.",
+      "kind": "auth",
+      "sourcePatterns": [
+        "src/lib/auth.ts"
+      ],
+      "events": [
+        "Credential login or OAuth user creation is processed by Auth.js callbacks."
+      ],
+      "expectedEvidence": [
+        "response",
+        "storage_write"
+      ],
+      "expectedOutcomeClasses": [
+        "success",
+        "validation_error",
+        "duplicate"
+      ],
+      "surfaceHint": "auth-access",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "request.apps",
+      "description": "App management request boundary.",
+      "kind": "request",
+      "sourcePatterns": [
+        "src/app/api/apps/route.ts",
+        "src/app/api/apps/[appId]/route.ts",
+        "src/app/api/apps/search/route.ts"
+      ],
+      "events": [
+        "App management or store-search HTTP routes are called."
+      ],
+      "expectedEvidence": [
+        "response"
+      ],
+      "expectedOutcomeClasses": [
+        "success",
+        "validation_error",
+        "duplicate",
+        "not_found",
+        "auth_denied"
+      ],
+      "surfaceHint": "request-boundary",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "request.alerts",
+      "description": "Alert and notification request boundary.",
+      "kind": "request",
+      "sourcePatterns": [
+        "src/app/api/alerts/**/route.ts"
+      ],
+      "events": [
+        "Alert and notification routes are invoked."
+      ],
+      "expectedEvidence": [
+        "response"
+      ],
+      "expectedOutcomeClasses": [
+        "success",
+        "auth_denied"
+      ],
+      "surfaceHint": "request-boundary",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "request.competitors-and-creatives",
+      "description": "Competitor and creatives request boundary.",
+      "kind": "request",
+      "sourcePatterns": [
+        "src/app/api/competitors/**/route.ts",
+        "src/app/api/creatives/**/route.ts"
+      ],
+      "events": [
+        "Competitor intelligence or creative-analysis routes are requested."
+      ],
+      "expectedEvidence": [
+        "response"
+      ],
+      "expectedOutcomeClasses": [
+        "success",
+        "validation_error"
+      ],
+      "surfaceHint": "request-boundary",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "request.dashboard-workspace-team",
+      "description": "Dashboard, workspace, and team request boundary.",
+      "kind": "request",
+      "sourcePatterns": [
+        "src/app/api/dashboard/**/route.ts",
+        "src/app/api/workspace/route.ts",
+        "src/app/api/team/**/route.ts",
+        "src/app/api/analytics/status/route.ts"
+      ],
+      "events": [
+        "Dashboard, workspace, team, or analytics status routes are requested."
+      ],
+      "expectedEvidence": [
+        "response"
+      ],
+      "expectedOutcomeClasses": [
+        "success",
+        "auth_denied"
+      ],
+      "surfaceHint": "request-boundary",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "request.invitations-and-reports",
+      "description": "Invitation, registration, and reports request boundary.",
+      "kind": "request",
+      "sourcePatterns": [
+        "src/app/api/invitations/**/route.ts",
+        "src/app/api/reports/route.ts",
+        "src/app/api/auth/register/route.ts"
+      ],
+      "events": [
+        "Invitation, registration, or report-generation routes are called."
+      ],
+      "expectedEvidence": [
+        "response",
+        "storage_write"
+      ],
+      "expectedOutcomeClasses": [
+        "success",
+        "validation_error",
+        "not_found"
+      ],
+      "surfaceHint": "request-boundary",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "request.keywords-and-rankings",
+      "description": "Keyword and ranking request boundary.",
+      "kind": "request",
+      "sourcePatterns": [
+        "src/app/api/keywords/**/route.ts",
+        "src/app/api/rankings/**/route.ts"
+      ],
+      "events": [
+        "Keyword tracking or ranking routes are called."
+      ],
+      "expectedEvidence": [
+        "response"
+      ],
+      "expectedOutcomeClasses": [
+        "success",
+        "validation_error"
+      ],
+      "surfaceHint": "request-boundary",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "request.metadata-and-reviews",
+      "description": "Metadata and reviews request boundary.",
+      "kind": "request",
+      "sourcePatterns": [
+        "src/app/api/metadata/**/route.ts",
+        "src/app/api/reviews/**/route.ts"
+      ],
+      "events": [
+        "Metadata-analysis or review-analysis routes are called."
+      ],
+      "expectedEvidence": [
+        "response"
+      ],
+      "expectedOutcomeClasses": [
+        "success",
+        "validation_error"
+      ],
+      "surfaceHint": "request-boundary",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "request.performance-and-market",
+      "description": "Performance and market intelligence request boundary.",
+      "kind": "request",
+      "sourcePatterns": [
+        "src/app/api/performance/**/route.ts",
+        "src/app/api/store-search/**/route.ts",
+        "src/app/api/google-play/**/route.ts",
+        "src/app/api/apple-ads/**/route.ts"
+      ],
+      "events": [
+        "Performance, store-search, Google Play, or Apple Ads routes are requested."
+      ],
+      "expectedEvidence": [
+        "response"
+      ],
+      "expectedOutcomeClasses": [
+        "success",
+        "validation_error",
+        "auth_denied"
+      ],
+      "surfaceHint": "request-boundary",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "request.cron",
+      "description": "Scheduler-driven cron request boundary.",
+      "kind": "request",
+      "sourcePatterns": [
+        "src/app/api/cron/**/route.ts"
+      ],
+      "events": [
+        "Cron routes are invoked by a scheduler."
+      ],
+      "expectedEvidence": [
+        "response"
+      ],
+      "expectedOutcomeClasses": [
+        "success",
+        "auth_denied",
+        "validation_error"
+      ],
+      "surfaceHint": "request-boundary",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "bootstrap.app-context",
+      "description": "Provider wiring and initial app selection bootstrap.",
+      "kind": "bootstrap",
+      "sourcePatterns": [
+        "src/components/providers.tsx",
+        "src/lib/app-context.tsx"
+      ],
+      "events": [
+        "The dashboard shell boots with app and locale context providers."
+      ],
+      "expectedEvidence": [
+        "state_transition",
+        "derived_view"
+      ],
+      "expectedOutcomeClasses": [
+        "success"
+      ],
+      "surfaceHint": "app-bootstrap",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "client.auth-pages",
+      "description": "Login and registration page state transitions.",
+      "kind": "ui-state",
+      "sourcePatterns": [
+        "src/app/(auth)/login/page.tsx",
+        "src/app/(auth)/register/page.tsx"
+      ],
+      "events": [
+        "A user submits login or registration forms."
+      ],
+      "expectedEvidence": [
+        "state_transition",
+        "redirect"
+      ],
+      "expectedOutcomeClasses": [
+        "success",
+        "validation_error",
+        "failure",
+        "redirect"
+      ],
+      "surfaceHint": "client-state",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "client.invitation",
+      "description": "Invitation acceptance page state transitions.",
+      "kind": "ui-state",
+      "sourcePatterns": [
+        "src/app/invitations/accept/page.tsx"
+      ],
+      "events": [
+        "A user lands on and accepts an invitation link."
+      ],
+      "expectedEvidence": [
+        "state_transition",
+        "redirect"
+      ],
+      "expectedOutcomeClasses": [
+        "success",
+        "failure",
+        "redirect"
+      ],
+      "surfaceHint": "client-state",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "client.header-controls",
+      "description": "Header controls and i18n runtime state.",
+      "kind": "ui-state",
+      "sourcePatterns": [
+        "src/components/layout/header.tsx",
+        "src/lib/i18n/index.ts"
+      ],
+      "events": [
+        "A user changes app, language, country, or signs out from the global header."
+      ],
+      "expectedEvidence": [
+        "state_transition",
+        "derived_view"
+      ],
+      "expectedOutcomeClasses": [
+        "success"
+      ],
+      "surfaceHint": "client-state",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "client.dashboard-states",
+      "description": "Dashboard first-load visible states.",
+      "kind": "ui-state",
+      "sourcePatterns": [
+        "src/app/(dashboard)/page.tsx"
+      ],
+      "events": [
+        "The main dashboard loads health data for the selected app."
+      ],
+      "expectedEvidence": [
+        "state_transition",
+        "derived_view"
+      ],
+      "expectedOutcomeClasses": [
+        "success",
+        "failure"
+      ],
+      "surfaceHint": "client-state",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "client.settings-add-app",
+      "description": "Settings add-app modal state transitions.",
+      "kind": "ui-state",
+      "sourcePatterns": [
+        "src/app/(dashboard)/settings/page.tsx"
+      ],
+      "events": [
+        "A user opens the add-app modal, searches, and adds an app from Settings."
+      ],
+      "expectedEvidence": [
+        "state_transition",
+        "response"
+      ],
+      "expectedOutcomeClasses": [
+        "success",
+        "failure"
+      ],
+      "surfaceHint": "client-state",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "workflow.keyword-and-ranking",
+      "description": "Keyword and ranking workflow orchestration.",
+      "kind": "workflow",
+      "sourcePatterns": [
+        "src/server/services/keyword-service.ts",
+        "src/server/services/keyword-advanced-service.ts",
+        "src/server/services/ranking-advanced-service.ts"
+      ],
+      "events": [
+        "Keyword or ranking domain logic is executed inside the service layer."
+      ],
+      "expectedEvidence": [
+        "derived_view"
+      ],
+      "expectedOutcomeClasses": [
+        "success"
+      ],
+      "surfaceHint": "workflow-orchestration",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "workflow.review-competitor-and-alert",
+      "description": "Review, competitor, and alert workflow orchestration.",
+      "kind": "workflow",
+      "sourcePatterns": [
+        "src/server/services/review-advanced-service.ts",
+        "src/server/services/competitor-advanced-service.ts",
+        "src/server/services/alert-service.ts",
+        "src/server/services/alert-advanced-service.ts"
+      ],
+      "events": [
+        "Review, competitor, or alert domain logic executes in response to data changes."
+      ],
+      "expectedEvidence": [
+        "derived_view"
+      ],
+      "expectedOutcomeClasses": [
+        "success"
+      ],
+      "surfaceHint": "workflow-orchestration",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "workflow.metadata-reporting-and-enterprise",
+      "description": "Metadata, dashboard, reporting, and enterprise workflow orchestration.",
+      "kind": "workflow",
+      "sourcePatterns": [
+        "src/server/services/creative-service.ts",
+        "src/server/services/dashboard-service.ts",
+        "src/server/services/enterprise-service.ts",
+        "src/server/services/metadata-advanced-service.ts",
+        "src/server/services/performance-service.ts",
+        "src/server/services/report-service.ts",
+        "src/server/services/translation-service.ts"
+      ],
+      "events": [
+        "Metadata, reporting, dashboard, enterprise, and translation services run inside the app boundary."
+      ],
+      "expectedEvidence": [
+        "derived_view"
+      ],
+      "expectedOutcomeClasses": [
+        "success"
+      ],
+      "surfaceHint": "workflow-orchestration",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "background.keyword-and-metadata",
+      "description": "Keyword and metadata background execution.",
+      "kind": "background",
+      "sourcePatterns": [
+        "src/workers/index.ts",
+        "src/app/api/cron/collect-keywords/route.ts"
+      ],
+      "events": [
+        "Keyword rank and metadata snapshot jobs are scheduled or processed."
+      ],
+      "expectedEvidence": [
+        "job_enqueue",
+        "job_process",
+        "storage_write"
+      ],
+      "expectedOutcomeClasses": [
+        "success",
+        "skipped"
+      ],
+      "surfaceHint": "background-execution",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "background.review-and-sentiment",
+      "description": "Review collection and sentiment background execution.",
+      "kind": "background",
+      "sourcePatterns": [
+        "src/workers/index.ts",
+        "src/app/api/cron/analyze-sentiment/route.ts",
+        "src/app/api/cron/collect-reviews/route.ts"
+      ],
+      "events": [
+        "Review collection and sentiment analysis jobs are scheduled or processed."
+      ],
+      "expectedEvidence": [
+        "job_enqueue",
+        "job_process",
+        "storage_write"
+      ],
+      "expectedOutcomeClasses": [
+        "success",
+        "duplicate",
+        "skipped"
+      ],
+      "surfaceHint": "background-execution",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "external.provider-contracts",
+      "description": "Provider adapter contracts.",
+      "kind": "external",
+      "sourcePatterns": [
+        "src/lib/anthropic.ts",
+        "src/server/ai-service.ts",
+        "src/server/itunes-api.ts",
+        "src/server/review-collector.ts",
+        "src/server/services/apple-ads-service.ts",
+        "src/server/services/google-play-service.ts",
+        "src/server/services/store-search-service.ts"
+      ],
+      "events": [
+        "The platform interprets responses from App Store, Google Play, Apple Ads, Anthropic, or related market APIs."
+      ],
+      "expectedEvidence": [
+        "external_call",
+        "response",
+        "derived_view"
+      ],
+      "expectedOutcomeClasses": [
+        "success",
+        "provider_failure",
+        "schema_drift"
+      ],
+      "surfaceHint": "external-contracts",
+      "minimumFidelity": "contract"
+    },
+    {
+      "id": "invariant.runtime",
+      "description": "Property-based runtime invariants.",
+      "kind": "invariant",
+      "sourcePatterns": [
+        "src/lib/utils.ts",
+        "src/server/itunes-api.ts",
+        "src/server/services/metadata-advanced-service.ts"
+      ],
+      "events": [
+        "Wide input domains exercise invariant-heavy runtime code."
+      ],
+      "expectedEvidence": [
+        "derived_view"
+      ],
+      "expectedOutcomeClasses": [
+        "success"
+      ],
+      "surfaceHint": "runtime-invariants",
+      "minimumFidelity": "isolated"
+    }
+  ]
+}

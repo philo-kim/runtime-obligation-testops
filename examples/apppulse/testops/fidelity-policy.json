@@ -1,0 +1,49 @@
+{
+  "$schema": "./fidelity-policy.schema.json",
+  "version": "1.0.0",
+  "principle": "runtime-obligation-first",
+  "fidelityLevels": [
+    "isolated",
+    "simulated",
+    "contract",
+    "real-dependency",
+    "full-system"
+  ],
+  "defaultMinimumFidelity": "isolated",
+  "surfacePolicies": [
+    {
+      "surfaceId": "auth-access",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "surfaceId": "request-boundary",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "surfaceId": "app-bootstrap",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "surfaceId": "client-state",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "surfaceId": "workflow-orchestration",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "surfaceId": "background-execution",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "surfaceId": "external-contracts",
+      "minimumFidelity": "contract"
+    },
+    {
+      "surfaceId": "runtime-invariants",
+      "minimumFidelity": "isolated"
+    }
+  ],
+  "inventorySourcePolicies": [],
+  "obligationPolicies": []
+}

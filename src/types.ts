@@ -26,6 +26,7 @@ export interface Obligation {
   sourcePatterns: string[];
   event: string;
   outcomes: string[];
+  outcomeClasses?: string[];
   evidence: string[];
   fidelity: string;
   ownerTests: string[];
@@ -39,6 +40,76 @@ export interface RuntimeControlPlane {
   fidelityLevels: string[];
   surfaces: Surface[];
   obligations: Obligation[];
+}
+
+export interface RuntimeInventorySource {
+  id: string;
+  description: string;
+  kind: string;
+  sourcePatterns: string[];
+  events: string[];
+  expectedEvidence?: string[];
+  expectedOutcomeClasses?: string[];
+  surfaceHint?: string;
+  minimumFidelity?: string;
+}
+
+export interface RuntimeInventory {
+  $schema?: string;
+  version: string;
+  principle: string;
+  sourceKinds: string[];
+  sources: RuntimeInventorySource[];
+}
+
+export interface RuntimeSurfaceDefinition {
+  id: string;
+  description: string;
+  inventorySourceIds: string[];
+  requiredEvidence?: string[];
+  requiredOutcomeClasses?: string[];
+  minimumFidelity?: string;
+}
+
+export interface RuntimeSurfaceCatalog {
+  $schema?: string;
+  version: string;
+  principle: string;
+  surfaces: RuntimeSurfaceDefinition[];
+}
+
+export interface FidelityPolicyRule {
+  minimumFidelity: string;
+}
+
+export interface SurfaceFidelityPolicy extends FidelityPolicyRule {
+  surfaceId: string;
+}
+
+export interface InventorySourceFidelityPolicy extends FidelityPolicyRule {
+  inventorySourceId: string;
+}
+
+export interface ObligationFidelityPolicy extends FidelityPolicyRule {
+  obligationId: string;
+}
+
+export interface FidelityPolicy {
+  $schema?: string;
+  version: string;
+  principle: string;
+  fidelityLevels: string[];
+  defaultMinimumFidelity?: string;
+  surfacePolicies?: SurfaceFidelityPolicy[];
+  inventorySourcePolicies?: InventorySourceFidelityPolicy[];
+  obligationPolicies?: ObligationFidelityPolicy[];
+}
+
+export interface ProjectModel {
+  controlPlane: RuntimeControlPlane;
+  inventory?: RuntimeInventory;
+  surfaceCatalog?: RuntimeSurfaceCatalog;
+  fidelityPolicy?: FidelityPolicy;
 }
 
 export interface ValidationIssue {
@@ -58,15 +129,28 @@ export interface SurfaceSummary {
 export interface ValidationSummary {
   principle: string;
   version: string;
+  inventorySources?: number;
+  derivedSurfaces?: number;
   surfaceSummaries: SurfaceSummary[];
   issues: ValidationIssue[];
 }
 
 export interface ValidationOptions {
   requireAnnotations?: boolean;
+  inventory?: RuntimeInventory;
+  surfaceCatalog?: RuntimeSurfaceCatalog;
+  fidelityPolicy?: FidelityPolicy;
 }
 
 export interface InitResult {
   written: string[];
   skipped: string[];
+}
+
+export interface ImpactAnalysis {
+  changedFiles: string[];
+  impactedInventorySources: string[];
+  impactedSurfaces: string[];
+  impactedObligations: string[];
+  impactedOwnerTests: string[];
 }

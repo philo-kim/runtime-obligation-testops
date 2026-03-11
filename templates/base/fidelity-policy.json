@@ -1,0 +1,16 @@
+{
+  "$schema": "./fidelity-policy.schema.json",
+  "version": "1.0.0",
+  "principle": "automated testing is managed against the full set of runtime obligations",
+  "fidelityLevels": [
+    "isolated",
+    "simulated",
+    "contract",
+    "real-dependency",
+    "full-system"
+  ],
+  "defaultMinimumFidelity": "simulated",
+  "surfacePolicies": [],
+  "inventorySourcePolicies": [],
+  "obligationPolicies": []
+}

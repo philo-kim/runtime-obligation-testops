@@ -3,10 +3,14 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import type { ErrorObject } from "ajv";
-import type { RuntimeControlPlane } from "./types.js";
+import type {
+  FidelityPolicy,
+  RuntimeControlPlane,
+  RuntimeInventory,
+  RuntimeSurfaceCatalog,
+} from "./types.js";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const schemaPath = path.join(packageRoot, "schema", "runtime-control-plane.schema.json");
 const require = createRequire(import.meta.url);
 const Ajv2020 = require("ajv/dist/2020").default as new (options: Record<string, unknown>) => {
   compile: (schema: Record<string, unknown>) => {
@@ -15,18 +19,31 @@ const Ajv2020 = require("ajv/dist/2020").default as new (options: Record<string,
   };
 };
 
-export function getSchemaPath(): string {
-  return schemaPath;
+export type SchemaName =
+  | "runtime-control-plane"
+  | "runtime-inventory"
+  | "runtime-surfaces"
+  | "fidelity-policy";
+
+function schemaPath(schemaName: SchemaName): string {
+  return path.join(packageRoot, "schema", `${schemaName}.schema.json`);
 }
 
-export function readSchema(): Record<string, unknown> {
-  return JSON.parse(readFileSync(schemaPath, "utf8")) as Record<string, unknown>;
+export function getSchemaPath(schemaName: SchemaName = "runtime-control-plane"): string {
+  return schemaPath(schemaName);
 }
 
-export function validateControlPlaneShape(controlPlane: RuntimeControlPlane): string[] {
+export function readSchema(schemaName: SchemaName = "runtime-control-plane"): Record<string, unknown> {
+  return JSON.parse(readFileSync(schemaPath(schemaName), "utf8")) as Record<string, unknown>;
+}
+
+function validateShape(
+  value: unknown,
+  schemaName: SchemaName,
+): string[] {
   const ajv = new Ajv2020({ allErrors: true, strict: false });
-  const validate = ajv.compile(readSchema());
-  const valid = validate(controlPlane);
+  const validate = ajv.compile(readSchema(schemaName));
+  const valid = validate(value);
 
   if (valid) {
     return [];
@@ -36,4 +53,20 @@ export function validateControlPlaneShape(controlPlane: RuntimeControlPlane): st
     const location = error.instancePath || "/";
     return `${location} ${error.message ?? "is invalid"}`.trim();
   });
+}
+
+export function validateControlPlaneShape(controlPlane: RuntimeControlPlane): string[] {
+  return validateShape(controlPlane, "runtime-control-plane");
+}
+
+export function validateInventoryShape(inventory: RuntimeInventory): string[] {
+  return validateShape(inventory, "runtime-inventory");
+}
+
+export function validateSurfaceCatalogShape(surfaceCatalog: RuntimeSurfaceCatalog): string[] {
+  return validateShape(surfaceCatalog, "runtime-surfaces");
+}
+
+export function validateFidelityPolicyShape(fidelityPolicy: FidelityPolicy): string[] {
+  return validateShape(fidelityPolicy, "fidelity-policy");
 }

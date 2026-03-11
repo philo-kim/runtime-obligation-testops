@@ -1,0 +1,22 @@
+{
+  "$schema": "./runtime-surfaces.schema.json",
+  "version": "1.0.0",
+  "principle": "automated testing is managed against the full set of runtime obligations",
+  "surfaces": [
+    {
+      "id": "runtime-entry",
+      "description": "Replace this with the surface that owns the runtime source.",
+      "inventorySourceIds": [
+        "runtime-entry"
+      ],
+      "requiredEvidence": [
+        "response"
+      ],
+      "requiredOutcomeClasses": [
+        "success",
+        "failure"
+      ],
+      "minimumFidelity": "simulated"
+    }
+  ]
+}

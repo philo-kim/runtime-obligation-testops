@@ -9,6 +9,12 @@ export function renderMarkdown(summary: ValidationSummary): string {
   lines.push("");
   lines.push(`- Version: ${summary.version}`);
   lines.push(`- Principle: ${summary.principle}`);
+  if (summary.inventorySources !== undefined) {
+    lines.push(`- Inventory Sources: ${summary.inventorySources}`);
+  }
+  if (summary.derivedSurfaces !== undefined) {
+    lines.push(`- Catalog Surfaces: ${summary.derivedSurfaces}`);
+  }
   lines.push(`- Issues: ${summary.issues.length}`);
   lines.push("");
   lines.push("| Surface | Sources | Tests | Obligations | Uncovered | Unreferenced Tests |");

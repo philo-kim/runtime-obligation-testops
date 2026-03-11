@@ -6,7 +6,10 @@ It should treat it as the runtime source of truth for automated testing decision
 
 ## What the agent must read first
 
+- `testops/runtime-inventory.json`
+- `testops/runtime-surfaces.json`
 - `testops/runtime-control-plane.json`
+- `testops/fidelity-policy.json`
 - `testops/runtime-control-plane.schema.json`
 - `AGENTS.md`
 
@@ -16,7 +19,8 @@ It should treat it as the runtime source of truth for automated testing decision
 2. identify the affected surface
 3. identify whether an obligation changed or a new obligation was introduced
 4. update owner tests and annotations
-5. run `rotops validate`
+5. run `rotops impact` for changed files when the impact is unclear
+6. run `rotops validate`
 
 ## What the agent must not do
 
