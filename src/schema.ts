@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import type { ErrorObject } from "ajv";
 import type {
   FidelityPolicy,
+  RuntimeDiscoveryPolicy,
   RuntimeControlPlane,
   RuntimeInventory,
   RuntimeSurfaceCatalog,
@@ -23,7 +24,8 @@ export type SchemaName =
   | "runtime-control-plane"
   | "runtime-inventory"
   | "runtime-surfaces"
-  | "fidelity-policy";
+  | "fidelity-policy"
+  | "runtime-discovery-policy";
 
 function schemaPath(schemaName: SchemaName): string {
   return path.join(packageRoot, "schema", `${schemaName}.schema.json`);
@@ -69,4 +71,8 @@ export function validateSurfaceCatalogShape(surfaceCatalog: RuntimeSurfaceCatalo
 
 export function validateFidelityPolicyShape(fidelityPolicy: FidelityPolicy): string[] {
   return validateShape(fidelityPolicy, "fidelity-policy");
+}
+
+export function validateDiscoveryPolicyShape(discoveryPolicy: RuntimeDiscoveryPolicy): string[] {
+  return validateShape(discoveryPolicy, "runtime-discovery-policy");
 }

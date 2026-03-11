@@ -11,6 +11,7 @@ import {
   validateControlPlane,
 } from "../src/index.js";
 import type {
+  RuntimeDiscoveryPolicy,
   FidelityPolicy,
   RuntimeControlPlane,
   RuntimeInventory,
@@ -33,7 +34,7 @@ function writeProjectFile(root: string, relativePath: string, contents: string):
 function makeInventory(): RuntimeInventory {
   return {
     version: "1.0.0",
-    principle: "runtime obligations",
+    principle: "runtime-obligation-first",
     sourceKinds: ["request"],
     sources: [
       {
@@ -51,10 +52,19 @@ function makeInventory(): RuntimeInventory {
   };
 }
 
+function makeDiscoveryPolicy(): RuntimeDiscoveryPolicy {
+  return {
+    version: "1.0.0",
+    principle: "runtime-obligation-first",
+    ignorePatterns: [],
+    suppressions: [],
+  };
+}
+
 function makeControlPlane(): RuntimeControlPlane {
   return {
     version: "1.0.0",
-    principle: "runtime obligations",
+    principle: "runtime-obligation-first",
     evidenceKinds: ["response", "state_transition"],
     fidelityLevels: [
       "isolated",
@@ -115,6 +125,7 @@ describe("validateControlPlane", () => {
     const summary = validateControlPlane(makeControlPlane(), root, {
       inventory,
       surfaceCatalog,
+      discoveryPolicy: makeDiscoveryPolicy(),
     });
 
     expect(summary.issues).toEqual([]);
@@ -141,7 +152,7 @@ describe("validateControlPlane", () => {
     };
     const fidelityPolicy: FidelityPolicy = {
       version: "1.0.0",
-      principle: "runtime obligations",
+      principle: "runtime-obligation-first",
       fidelityLevels: [
         "isolated",
         "simulated",
@@ -158,6 +169,7 @@ describe("validateControlPlane", () => {
       inventory,
       surfaceCatalog: deriveSurfaceCatalog(inventory),
       fidelityPolicy,
+      discoveryPolicy: makeDiscoveryPolicy(),
     });
     const messages = summary.issues.map((issue) => issue.message);
 
@@ -166,6 +178,28 @@ describe("validateControlPlane", () => {
     );
     expect(messages).toContain(
       "Obligation request-entry.success has fidelity simulated, below required minimum real-dependency",
+    );
+  });
+
+  it("fails when discovered runtime files are not declared in the inventory", () => {
+    const root = makeTempDir();
+    writeProjectFile(root, "src/lib/prisma.ts", "export const prisma = true;\n");
+    writeProjectFile(root, "prisma/schema.prisma", "model Example { id String @id }\n");
+    writeProjectFile(root, "src/entry.ts", "export const entry = true;\n");
+    writeProjectFile(
+      root,
+      "test/entry.test.ts",
+      "// runtime-obligations: request-entry.success\nexport const testFile = true;\n",
+    );
+
+    const summary = validateControlPlane(makeControlPlane(), root, {
+      inventory: makeInventory(),
+      surfaceCatalog: deriveSurfaceCatalog(makeInventory()),
+      discoveryPolicy: makeDiscoveryPolicy(),
+    });
+
+    expect(summary.issues.map((issue) => issue.message)).toContain(
+      "Discovered runtime file src/lib/prisma.ts is not represented in the declared inventory",
     );
   });
 });
@@ -234,6 +268,17 @@ describe("scanRuntimeInventory", () => {
 
     expect(ids).toEqual(["auth-access", "background-execution", "request-boundary"]);
   });
+
+  it("ignores test files by default", () => {
+    const root = makeTempDir();
+    writeProjectFile(root, "src/lib/prisma.ts", "export const prisma = true;\n");
+    writeProjectFile(root, "src/test/prisma.unit.test.ts", "export const ignored = true;\n");
+
+    const inventory = scanRuntimeInventory(root);
+    const persistence = inventory.sources.find((source) => source.id === "persistence-semantics");
+
+    expect(persistence?.sourcePatterns).toEqual(["src/lib/prisma.ts"]);
+  });
 });
 
 describe("initWorkspace", () => {
@@ -246,10 +291,12 @@ describe("initWorkspace", () => {
     expect(existsSync(path.join(root, "testops", "runtime-inventory.json"))).toBe(true);
     expect(existsSync(path.join(root, "testops", "runtime-surfaces.json"))).toBe(true);
     expect(existsSync(path.join(root, "testops", "fidelity-policy.json"))).toBe(true);
+    expect(existsSync(path.join(root, "testops", "runtime-discovery-policy.json"))).toBe(true);
     expect(existsSync(path.join(root, "testops", "runtime-control-plane.schema.json"))).toBe(true);
     expect(existsSync(path.join(root, "testops", "runtime-inventory.schema.json"))).toBe(true);
     expect(existsSync(path.join(root, "testops", "runtime-surfaces.schema.json"))).toBe(true);
     expect(existsSync(path.join(root, "testops", "fidelity-policy.schema.json"))).toBe(true);
+    expect(existsSync(path.join(root, "testops", "runtime-discovery-policy.schema.json"))).toBe(true);
     expect(existsSync(path.join(root, ".github", "workflows", "testops-control.yml"))).toBe(true);
     expect(existsSync(path.join(root, "vitest.runtime.workspace.ts"))).toBe(true);
   });

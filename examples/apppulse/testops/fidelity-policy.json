@@ -36,6 +36,10 @@
       "minimumFidelity": "simulated"
     },
     {
+      "surfaceId": "persistence-semantics",
+      "minimumFidelity": "simulated"
+    },
+    {
       "surfaceId": "external-contracts",
       "minimumFidelity": "contract"
     },

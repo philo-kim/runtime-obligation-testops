@@ -15,6 +15,12 @@ export function renderMarkdown(summary: ValidationSummary): string {
   if (summary.derivedSurfaces !== undefined) {
     lines.push(`- Catalog Surfaces: ${summary.derivedSurfaces}`);
   }
+  if (summary.discoveredSources !== undefined) {
+    lines.push(`- Discovered Sources: ${summary.discoveredSources}`);
+  }
+  if (summary.discoveredFiles !== undefined) {
+    lines.push(`- Discovered Files: ${summary.discoveredFiles}`);
+  }
   lines.push(`- Issues: ${summary.issues.length}`);
   lines.push("");
   lines.push("| Surface | Sources | Tests | Obligations | Uncovered | Unreferenced Tests |");
@@ -33,6 +39,9 @@ export function renderMarkdown(summary: ValidationSummary): string {
     lines.push("");
     lines.push("- All registered runtime sources are covered by obligations.");
     lines.push("- All registered owner tests are traceable back to obligations.");
+    if (summary.discoveredFiles !== undefined) {
+      lines.push("- Discovered runtime candidates reconcile with the declared inventory.");
+    }
     return lines.join("\n");
   }
 

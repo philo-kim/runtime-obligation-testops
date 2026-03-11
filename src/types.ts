@@ -105,11 +105,25 @@ export interface FidelityPolicy {
   obligationPolicies?: ObligationFidelityPolicy[];
 }
 
+export interface RuntimeDiscoverySuppression {
+  filePatterns: string[];
+  reason: string;
+}
+
+export interface RuntimeDiscoveryPolicy {
+  $schema?: string;
+  version: string;
+  principle: string;
+  ignorePatterns?: string[];
+  suppressions?: RuntimeDiscoverySuppression[];
+}
+
 export interface ProjectModel {
   controlPlane: RuntimeControlPlane;
   inventory?: RuntimeInventory;
   surfaceCatalog?: RuntimeSurfaceCatalog;
   fidelityPolicy?: FidelityPolicy;
+  discoveryPolicy?: RuntimeDiscoveryPolicy;
 }
 
 export interface ValidationIssue {
@@ -131,6 +145,8 @@ export interface ValidationSummary {
   version: string;
   inventorySources?: number;
   derivedSurfaces?: number;
+  discoveredSources?: number;
+  discoveredFiles?: number;
   surfaceSummaries: SurfaceSummary[];
   issues: ValidationIssue[];
 }
@@ -140,6 +156,8 @@ export interface ValidationOptions {
   inventory?: RuntimeInventory;
   surfaceCatalog?: RuntimeSurfaceCatalog;
   fidelityPolicy?: FidelityPolicy;
+  discoveryPolicy?: RuntimeDiscoveryPolicy;
+  discoveredInventory?: RuntimeInventory;
 }
 
 export interface InitResult {

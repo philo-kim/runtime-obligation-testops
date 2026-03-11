@@ -2,11 +2,13 @@ import path from "node:path";
 import { existsSync, readFileSync } from "node:fs";
 import {
   DEFAULT_CONFIG_PATH,
+  DEFAULT_DISCOVERY_POLICY_PATH,
   DEFAULT_FIDELITY_POLICY_PATH,
   DEFAULT_INVENTORY_PATH,
   DEFAULT_SURFACES_PATH,
 } from "./constants.js";
 import type {
+  RuntimeDiscoveryPolicy,
   FidelityPolicy,
   ProjectModel,
   RuntimeControlPlane,
@@ -19,6 +21,7 @@ export interface ProjectPathOptions {
   inventoryPath?: string;
   surfaceCatalogPath?: string;
   fidelityPolicyPath?: string;
+  discoveryPolicyPath?: string;
 }
 
 export interface ResolvedProjectPaths {
@@ -26,6 +29,7 @@ export interface ResolvedProjectPaths {
   inventoryPath: string;
   surfaceCatalogPath: string;
   fidelityPolicyPath: string;
+  discoveryPolicyPath: string;
 }
 
 function resolvePath(root: string, filePath: string): string {
@@ -57,6 +61,10 @@ export function resolveProjectPaths(
       repoRoot,
       options.fidelityPolicyPath ?? DEFAULT_FIDELITY_POLICY_PATH,
     ),
+    discoveryPolicyPath: resolvePath(
+      repoRoot,
+      options.discoveryPolicyPath ?? DEFAULT_DISCOVERY_POLICY_PATH,
+    ),
   };
 }
 
@@ -76,11 +84,15 @@ export function loadProjectModel(
   const fidelityPolicy = existsSync(paths.fidelityPolicyPath)
     ? readJsonFile<FidelityPolicy>(paths.fidelityPolicyPath)
     : undefined;
+  const discoveryPolicy = existsSync(paths.discoveryPolicyPath)
+    ? readJsonFile<RuntimeDiscoveryPolicy>(paths.discoveryPolicyPath)
+    : undefined;
 
   return {
     controlPlane,
     inventory,
     surfaceCatalog,
     fidelityPolicy,
+    discoveryPolicy,
   };
 }

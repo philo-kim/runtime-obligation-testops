@@ -42,6 +42,10 @@ export function initWorkspace(
       destination: path.join(targetDir, "testops", "fidelity-policy.json"),
     },
     {
+      source: templatePath("base", "runtime-discovery-policy.json"),
+      destination: path.join(targetDir, "testops", "runtime-discovery-policy.json"),
+    },
+    {
       source: schemaPath("runtime-control-plane.schema.json"),
       destination: path.join(targetDir, "testops", "runtime-control-plane.schema.json"),
     },
@@ -56,6 +60,10 @@ export function initWorkspace(
     {
       source: schemaPath("fidelity-policy.schema.json"),
       destination: path.join(targetDir, "testops", "fidelity-policy.schema.json"),
+    },
+    {
+      source: schemaPath("runtime-discovery-policy.schema.json"),
+      destination: path.join(targetDir, "testops", "runtime-discovery-policy.schema.json"),
     },
     {
       source: templatePath("github", "testops-control.yml"),

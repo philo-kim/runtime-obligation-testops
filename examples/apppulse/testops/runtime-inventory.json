@@ -8,6 +8,7 @@
     "bootstrap",
     "external",
     "invariant",
+    "persistence",
     "request",
     "ui-state",
     "workflow"
@@ -40,7 +41,9 @@
       "description": "Credential login and OAuth bootstrap logic.",
       "kind": "auth",
       "sourcePatterns": [
-        "src/lib/auth.ts"
+        "src/lib/auth.ts",
+        "src/app/api/auth/[...nextauth]/route.ts",
+        "src/app/api/auth/register/route.ts"
       ],
       "events": [
         "Credential login or OAuth user creation is processed by Auth.js callbacks."
@@ -279,6 +282,27 @@
       "minimumFidelity": "simulated"
     },
     {
+      "id": "bootstrap.layouts",
+      "description": "Root, auth, and dashboard layout shells.",
+      "kind": "bootstrap",
+      "sourcePatterns": [
+        "src/app/layout.tsx",
+        "src/app/(auth)/layout.tsx",
+        "src/app/(dashboard)/layout.tsx"
+      ],
+      "events": [
+        "The application mounts root, auth, and dashboard layout shells."
+      ],
+      "expectedEvidence": [
+        "derived_view"
+      ],
+      "expectedOutcomeClasses": [
+        "success"
+      ],
+      "surfaceHint": "app-bootstrap",
+      "minimumFidelity": "simulated"
+    },
+    {
       "id": "client.auth-pages",
       "description": "Login and registration page state transitions.",
       "kind": "ui-state",
@@ -501,6 +525,28 @@
         "skipped"
       ],
       "surfaceHint": "background-execution",
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "persistence.prisma-and-schema",
+      "description": "Prisma client and schema-backed persistence semantics.",
+      "kind": "persistence",
+      "sourcePatterns": [
+        "src/lib/prisma.ts",
+        "prisma/schema.prisma"
+      ],
+      "events": [
+        "Prisma-backed runtime flows read and write persistent state through the shared schema and client."
+      ],
+      "expectedEvidence": [
+        "storage_read",
+        "storage_write"
+      ],
+      "expectedOutcomeClasses": [
+        "success",
+        "duplicate"
+      ],
+      "surfaceHint": "persistence-semantics",
       "minimumFidelity": "simulated"
     },
     {

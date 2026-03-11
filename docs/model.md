@@ -1,11 +1,15 @@
 # Runtime Model
 
-The package manages runtime verification in four linked artifacts:
+The package manages runtime verification in five linked artifacts:
 
+- `runtime-discovery-policy.json`
 - `runtime-inventory.json`
 - `runtime-surfaces.json`
 - `runtime-control-plane.json`
 - `fidelity-policy.json`
+
+The discovery policy controls how candidate runtime sources are found.
+The other four files are the reviewed runtime model.
 
 ## Runtime source
 
@@ -21,12 +25,24 @@ Examples:
 - scheduler
 - external adapter
 
-Inventory sources define the denominator:
+Inventory sources define the reviewed denominator:
 
 - what can enter the system
 - where state can change
 - where background execution starts
 - where storage or provider boundaries exist
+
+They are often seeded by scanner output, but they are not the same thing as raw scanner output.
+
+## Runtime discovery policy
+
+Discovery policy defines how the scanner is allowed to behave.
+
+Typical uses:
+
+- ignore tests and generated code
+- suppress reviewed false positives
+- keep the discovered candidate set stable in CI
 
 ## Runtime surface
 
@@ -48,7 +64,7 @@ Each obligation records:
 - the fidelity level
 - the owner tests
 
-Obligations close the inventory with concrete proof.
+Obligations close the reviewed inventory with concrete proof.
 
 ## Fidelity policy
 
@@ -74,3 +90,12 @@ Suggested levels:
 - `full-system`
 
 The package does not force one set, but it forces each project to define and use one consistently.
+
+## Declared vs discovered
+
+This package intentionally keeps two layers:
+
+- `discovered runtime candidates`
+- `declared reviewed model`
+
+The validator compares them so a team cannot silently narrow the denominator by hand.

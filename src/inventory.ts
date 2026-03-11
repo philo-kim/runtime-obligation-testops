@@ -1,5 +1,5 @@
 import { expandPatterns } from "./fs-utils.js";
-import type { RuntimeInventory, RuntimeInventorySource } from "./types.js";
+import type { RuntimeDiscoveryPolicy, RuntimeInventory, RuntimeInventorySource } from "./types.js";
 
 interface DetectionRule {
   id: string;
@@ -14,6 +14,12 @@ interface DetectionRule {
 }
 
 const DEFAULT_IGNORE_PATTERNS = [
+  "**/*.d.ts",
+  "**/*.test.*",
+  "**/*.spec.*",
+  "**/__tests__/**",
+  "**/test/**",
+  "**/tests/**",
   "**/node_modules/**",
   "**/.git/**",
   "**/.next/**",
@@ -27,7 +33,7 @@ const DETECTION_RULES: DetectionRule[] = [
     id: "auth-access",
     description: "Authentication, authorization, and protected route/session boundaries.",
     kind: "auth",
-    patterns: ["**/middleware.*", "**/*auth*.*", "**/*session*.*"],
+    patterns: ["**/middleware.*", "**/auth.ts", "**/auth/**/*.*", "**/*session*.*"],
     events: [
       "An access-controlled request or session bootstrap reaches the system boundary.",
     ],
@@ -61,7 +67,6 @@ const DETECTION_RULES: DetectionRule[] = [
       "**/providers.*",
       "**/*context*.*",
       "**/app/**/layout.*",
-      "**/app/**/page.*",
     ],
     events: ["The application bootstraps visible runtime state."],
     expectedEvidence: ["state_transition", "derived_view"],
@@ -91,11 +96,12 @@ const DETECTION_RULES: DetectionRule[] = [
     description: "Persistent state boundaries, repositories, and ORM integration.",
     kind: "persistence",
     patterns: [
-      "**/db/**/*.*",
       "**/prisma.*",
+      "**/prisma/schema.prisma",
+      "**/persistence/**/*.*",
+      "**/repositories/**/*.*",
       "**/*repository*.*",
-      "**/*model*.*",
-      "**/*store*.*",
+      "**/dao/**/*.*",
     ],
     events: ["Persistent state is written, deduplicated, or read back."],
     expectedEvidence: ["storage_write", "storage_read"],
@@ -112,7 +118,6 @@ const DETECTION_RULES: DetectionRule[] = [
       "**/*api.*",
       "**/*connector*.*",
       "**/*adapter*.*",
-      "**/*provider*.*",
     ],
     events: ["The system calls or interprets an external provider contract."],
     expectedEvidence: ["external_call", "response"],
@@ -122,11 +127,32 @@ const DETECTION_RULES: DetectionRule[] = [
   },
 ];
 
-export function scanRuntimeInventory(repoRoot: string): RuntimeInventory {
+function discoveryIgnores(options?: {
+  ignorePatterns?: string[];
+  discoveryPolicy?: RuntimeDiscoveryPolicy;
+}): string[] {
+  return [
+    ...DEFAULT_IGNORE_PATTERNS,
+    ...(options?.ignorePatterns ?? []),
+    ...(options?.discoveryPolicy?.ignorePatterns ?? []),
+    ...(options?.discoveryPolicy?.suppressions ?? []).flatMap(
+      (suppression) => suppression.filePatterns,
+    ),
+  ];
+}
+
+export function scanRuntimeInventory(
+  repoRoot: string,
+  options?: {
+    ignorePatterns?: string[];
+    discoveryPolicy?: RuntimeDiscoveryPolicy;
+  },
+): RuntimeInventory {
   const sources: RuntimeInventorySource[] = [];
+  const ignorePatterns = discoveryIgnores(options);
 
   for (const rule of DETECTION_RULES) {
-    const matches = expandPatterns(repoRoot, rule.patterns, DEFAULT_IGNORE_PATTERNS);
+    const matches = expandPatterns(repoRoot, rule.patterns, ignorePatterns);
     if (matches.length === 0) {
       continue;
     }
@@ -147,7 +173,7 @@ export function scanRuntimeInventory(repoRoot: string): RuntimeInventory {
   return {
     $schema: "./runtime-inventory.schema.json",
     version: "1.0.0",
-    principle: "automated testing is managed against the full set of runtime obligations",
+    principle: "runtime-obligation-first",
     sourceKinds: [...new Set(sources.map((source) => source.kind))].sort(),
     sources,
   };

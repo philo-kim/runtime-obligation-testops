@@ -1,34 +1,52 @@
 # AI Agent Integration
 
-An AI agent should not treat this system as extra documentation.
+An AI agent should treat this system as executable runtime governance, not as optional documentation.
 
-It should treat it as the runtime source of truth for automated testing decisions.
+## Read order
 
-## What the agent must read first
+Before changing runtime behavior, the agent should read:
 
-- `testops/runtime-inventory.json`
-- `testops/runtime-surfaces.json`
-- `testops/runtime-control-plane.json`
-- `testops/fidelity-policy.json`
-- `testops/runtime-control-plane.schema.json`
-- `AGENTS.md`
+1. `runtime-discovery-policy.json`
+2. `runtime-inventory.json`
+3. `runtime-surfaces.json`
+4. `runtime-control-plane.json`
+5. `fidelity-policy.json`
+6. `AGENTS.md`
 
-## What the agent must do on every runtime change
+## Mandatory agent loop
 
-1. find the runtime source that changed
-2. identify the affected surface
-3. identify whether an obligation changed or a new obligation was introduced
-4. update owner tests and annotations
-5. run `rotops impact` for changed files when the impact is unclear
-6. run `rotops validate`
+For every runtime change:
 
-## What the agent must not do
+1. identify the changed runtime source
+2. compare the change against discovered runtime candidates
+3. determine whether the reviewed denominator changed
+4. determine which surface owns the change
+5. update or add obligations
+6. update owner tests and `runtime-obligations` annotations
+7. run `rotops impact` if the blast radius is unclear
+8. run `rotops validate`
 
-- do not use file coverage as the main sufficiency signal
-- do not add orphan tests
-- do not leave runtime sources uncovered
-- do not change runtime behavior without updating obligations
+## What agents must never do
 
-## Recommended review question for agents
+- treat line coverage as the main sufficiency signal
+- add tests that own no obligation
+- edit inventory to hide discovery drift
+- change runtime behavior without updating obligations
+- claim a proof is complete when the evidence is not externally observable
 
-`for the changed runtime sources, which obligations changed, what evidence proves them, and which tests now own that proof?`
+## The core review question
+
+An agent should always be able to answer:
+
+`for the changed runtime source, what did discovery find, what does the reviewed model accept, which obligations changed, what evidence proves them, and which tests own that proof?`
+
+## Why this matters for agents
+
+Without this system, agents can easily:
+
+- optimize for easy coverage
+- add low-value tests
+- miss runtime denominator drift
+- confuse local implementation detail with runtime proof
+
+With this system, the agent has a concrete control loop instead of a vague testing heuristic.

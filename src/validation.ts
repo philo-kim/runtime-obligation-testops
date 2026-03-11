@@ -1,9 +1,11 @@
 import path from "node:path";
 import { existsSync, readFileSync } from "node:fs";
-import { compareFidelity, obligationMeetsFidelity, resolveMinimumFidelity } from "./fidelity.js";
-import { expandPatterns, parseRuntimeObligationsAnnotation, toPosix } from "./fs-utils.js";
+import { obligationMeetsFidelity, resolveMinimumFidelity } from "./fidelity.js";
+import { expandPatterns, parseRuntimeObligationsAnnotation } from "./fs-utils.js";
+import { scanRuntimeInventory } from "./inventory.js";
 import {
   validateControlPlaneShape,
+  validateDiscoveryPolicyShape,
   validateFidelityPolicyShape,
   validateInventoryShape,
   validateSurfaceCatalogShape,
@@ -11,6 +13,7 @@ import {
 import type {
   Obligation,
   RuntimeControlPlane,
+  RuntimeDiscoveryPolicy,
   RuntimeInventory,
   RuntimeInventorySource,
   RuntimeSurfaceCatalog,
@@ -29,6 +32,22 @@ function pushSchemaIssues(issues: ValidationIssue[], prefix: string, values: str
       message: `${prefix}: ${value}`,
     });
   }
+}
+
+function ensureMatchingPrinciple(
+  issues: ValidationIssue[],
+  label: string,
+  expected: string | undefined,
+  actual: string | undefined,
+): void {
+  if (!expected || !actual || expected === actual) {
+    return;
+  }
+
+  issues.push({
+    level: "error",
+    message: `${label} principle ${JSON.stringify(actual)} does not match control-plane principle ${JSON.stringify(expected)}`,
+  });
 }
 
 function uniqueIdIssues(
@@ -61,6 +80,34 @@ function mapFilesById<T extends { id: string; sourcePatterns: string[] }>(
 
 function union(values: string[][]): string[] {
   return [...new Set(values.flat())].sort();
+}
+
+function groupInventorySourcesByFile(
+  inventory: RuntimeInventory,
+  repoRoot: string,
+): {
+  filesById: Map<string, string[]>;
+  sourcesByFile: Map<string, RuntimeInventorySource[]>;
+} {
+  const filesById = mapFilesById(repoRoot, inventory.sources);
+  const sourcesByFile = new Map<string, RuntimeInventorySource[]>();
+
+  for (const source of inventory.sources) {
+    for (const file of filesById.get(source.id) ?? []) {
+      const bucket = sourcesByFile.get(file) ?? [];
+      bucket.push(source);
+      sourcesByFile.set(file, bucket);
+    }
+  }
+
+  return { filesById, sourcesByFile };
+}
+
+function discoveryPolicyIgnores(discoveryPolicy?: RuntimeDiscoveryPolicy): string[] {
+  return [
+    ...(discoveryPolicy?.ignorePatterns ?? []),
+    ...(discoveryPolicy?.suppressions ?? []).flatMap((suppression) => suppression.filePatterns),
+  ];
 }
 
 function overlap(left: string[], right: string[]): string[] {
@@ -156,6 +203,18 @@ export function validateControlPlane(
   const inventory = options.inventory;
   const surfaceCatalog = options.surfaceCatalog;
   const fidelityPolicy = options.fidelityPolicy;
+  const discoveryPolicy = options.discoveryPolicy;
+  const discoveredInventoryCandidate =
+    options.discoveredInventory ??
+    (discoveryPolicy
+      ? scanRuntimeInventory(repoRoot, {
+          discoveryPolicy,
+        })
+      : undefined);
+  const discoveredInventory =
+    discoveredInventoryCandidate && discoveredInventoryCandidate.sources.length > 0
+      ? discoveredInventoryCandidate
+      : undefined;
 
   pushSchemaIssues(issues, "Schema violation", validateControlPlaneShape(controlPlane));
   if (inventory) {
@@ -175,6 +234,51 @@ export function validateControlPlane(
       validateFidelityPolicyShape(fidelityPolicy),
     );
   }
+  if (discoveryPolicy) {
+    pushSchemaIssues(
+      issues,
+      "Discovery policy schema violation",
+      validateDiscoveryPolicyShape(discoveryPolicy),
+    );
+  }
+  if (discoveredInventory) {
+    pushSchemaIssues(
+      issues,
+      "Discovered inventory schema violation",
+      validateInventoryShape(discoveredInventory),
+    );
+  }
+
+  ensureMatchingPrinciple(
+    issues,
+    "Inventory",
+    controlPlane.principle,
+    inventory?.principle,
+  );
+  ensureMatchingPrinciple(
+    issues,
+    "Surface catalog",
+    controlPlane.principle,
+    surfaceCatalog?.principle,
+  );
+  ensureMatchingPrinciple(
+    issues,
+    "Fidelity policy",
+    controlPlane.principle,
+    fidelityPolicy?.principle,
+  );
+  ensureMatchingPrinciple(
+    issues,
+    "Discovery policy",
+    controlPlane.principle,
+    discoveryPolicy?.principle,
+  );
+  ensureMatchingPrinciple(
+    issues,
+    "Discovered inventory",
+    controlPlane.principle,
+    discoveredInventory?.principle,
+  );
 
   uniqueIdIssues(
     issues,
@@ -195,6 +299,11 @@ export function validateControlPlane(
     issues,
     "catalog surface id",
     surfaceCatalog?.surfaces.map((surface) => surface.id) ?? [],
+  );
+  uniqueIdIssues(
+    issues,
+    "discovered inventory source id",
+    discoveredInventory?.sources.map((source) => source.id) ?? [],
   );
 
   if (controlPlane.surfaces.length === 0) {
@@ -247,6 +356,9 @@ export function validateControlPlane(
   }
 
   const inventoryFilesById = inventory ? mapFilesById(repoRoot, inventory.sources) : new Map();
+  const discoveredInventoryGrouped = discoveredInventory
+    ? groupInventorySourcesByFile(discoveredInventory, repoRoot)
+    : undefined;
   const sourceToSurfaceMap = new Map<string, string>();
 
   if (surfaceCatalog) {
@@ -303,6 +415,19 @@ export function validateControlPlane(
         issues.push({
           level: "error",
           message: `Inventory source ${source.id} is not assigned to any surface`,
+        });
+      }
+    }
+  }
+
+  if (inventory && discoveredInventoryGrouped) {
+    const declaredInventoryFiles = new Set(union([...inventoryFilesById.values()]));
+
+    for (const file of discoveredInventoryGrouped.sourcesByFile.keys()) {
+      if (!declaredInventoryFiles.has(file)) {
+        issues.push({
+          level: "error",
+          message: `Discovered runtime file ${file} is not represented in the declared inventory`,
         });
       }
     }
@@ -599,6 +724,8 @@ export function validateControlPlane(
     version: controlPlane.version,
     inventorySources: inventory?.sources.length,
     derivedSurfaces: surfaceCatalog?.surfaces.length,
+    discoveredSources: discoveredInventory?.sources.length,
+    discoveredFiles: discoveredInventoryGrouped?.sourcesByFile.size,
     surfaceSummaries,
     issues,
   };
@@ -611,6 +738,12 @@ export function printSummary(summary: ValidationSummary): void {
   }
   if (summary.derivedSurfaces !== undefined) {
     console.log(`- catalog surfaces: ${summary.derivedSurfaces}`);
+  }
+  if (summary.discoveredSources !== undefined) {
+    console.log(`- discovered sources: ${summary.discoveredSources}`);
+  }
+  if (summary.discoveredFiles !== undefined) {
+    console.log(`- discovered files: ${summary.discoveredFiles}`);
   }
 
   for (const surface of summary.surfaceSummaries) {

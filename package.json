@@ -1,7 +1,7 @@
 {
   "name": "runtime-obligation-testops",
-  "version": "0.2.0",
-  "description": "Runtime-obligation-first TestOps control plane for any software project.",
+  "version": "0.3.0",
+  "description": "Runtime-obligation-first TestOps control system for discovered-vs-declared runtime coverage.",
   "license": "MIT",
   "type": "module",
   "bin": {

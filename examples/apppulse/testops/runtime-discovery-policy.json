@@ -1,0 +1,7 @@
+{
+  "$schema": "./runtime-discovery-policy.schema.json",
+  "version": "1.0.0",
+  "principle": "runtime-obligation-first",
+  "ignorePatterns": [],
+  "suppressions": []
+}

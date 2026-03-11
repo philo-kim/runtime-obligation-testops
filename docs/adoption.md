@@ -1,84 +1,115 @@
 # Adoption Guide
 
-## 1. Inventory runtime sources
+## Start from the runtime, not the repo layout
 
-Do not start from folders or test files.
+Do not begin with:
 
-Start from the runtime:
+- `unit / integration / component`
+- package folders
+- line coverage
+
+Begin with what can actually happen at runtime:
 
 - request entrypoints
 - UI entrypoints
-- background entrypoints
 - storage boundaries
+- background execution
 - external adapters
+- session and auth boundaries
 
-You can seed this with:
+## The adoption sequence
+
+### 1. Discover candidate runtime sources
 
 ```bash
 npx rotops inventory scan
 ```
 
-## 2. Derive surfaces
+This gives you the first draft of the denominator.
+It is intentionally heuristic.
 
-Create management surfaces that are:
+### 2. Review scanner noise
 
-- meaningful for your runtime
-- non-overlapping enough to stay operable
-- broad enough to cover the whole runtime
+Use `runtime-discovery-policy.json` to:
 
-You can generate a first draft with:
+- ignore generated or irrelevant files
+- suppress reviewed false positives
+- keep CI stable
+
+Do not edit the reviewed denominator just to make validation green.
+Review discovery first.
+
+### 3. Declare the reviewed denominator
+
+Move accepted runtime sources into `runtime-inventory.json`.
+
+This file is the denominator your team is willing to manage.
+
+### 4. Derive management surfaces
 
 ```bash
 npx rotops surfaces derive
 ```
 
-## 3. Register obligations
+Then refine the result.
 
-For each surface, create obligations in this form:
+Good surfaces are:
+
+- meaningful for your runtime
+- stable enough to operate
+- non-overlapping enough to stay understandable
+- complete enough to cover the reviewed denominator
+
+### 5. Register obligations
+
+For each surface, define obligations with:
 
 - event
 - outcomes
 - evidence
+- fidelity
 - owner tests
 
-If the surface has stronger expectations, encode them in `fidelity-policy.json`.
+### 6. Connect the proof
 
-## 4. Map tests to obligations
+Annotate owner tests:
 
-Tests are not primary objects anymore.
-
-They are proof artifacts owned by obligations.
-
-## 5. Add the validator to CI
-
-Run `rotops validate` before the main test suite.
-
-This catches:
-
-- inventory sources that are not assigned to a surface
-- surfaces that are not represented in the control plane
-- uncovered runtime sources
-- orphan owner tests
-- missing owner files
-- missing evidence or outcome classes
-- fidelity regressions
-- annotation drift
-
-## 6. Export runner-specific configs if needed
-
-If you use Vitest, generate a runtime-surface workspace:
-
-```bash
-npx rotops export vitest-workspace --out vitest.runtime.workspace.ts
+```ts
+// runtime-obligations: surface.example-obligation
 ```
 
-## 7. Teach AI agents the same source of truth
+### 7. Add the control gate to CI
 
-Point agents at:
+Run:
 
-- the control plane
-- the schema
-- the validator
-- your AGENTS instructions
+```bash
+npx rotops validate
+```
 
-If an agent changes runtime behavior without updating obligations, the change is incomplete.
+before the main test suite.
+
+## What a good rollout looks like
+
+At the end of adoption, your repo should be able to answer:
+
+- what the runtime denominator is
+- which surfaces partition it
+- which obligations close it
+- what evidence proves each obligation
+- which tests own that proof
+- whether discovered runtime files are missing from the reviewed model
+
+## Public repo checklist
+
+- commit the five runtime artifacts
+- commit `AGENTS.md`
+- fail CI on `rotops validate`
+- keep generated reports out of git
+- document any non-default path layout
+- make example owner-test annotations visible in the repo
+
+## Existing repos with custom paths
+
+If your repo already uses `testing/` instead of `testops/`, keep the artifacts where they are and wrap `rotops` with project-local scripts.
+
+The rule is consistency, not folder dogma.

@@ -36,7 +36,8 @@
       "id": "app-bootstrap",
       "description": "Client bootstrap, provider wiring, and first app selection.",
       "inventorySourceIds": [
-        "bootstrap.app-context"
+        "bootstrap.app-context",
+        "bootstrap.layouts"
       ],
       "requiredEvidence": [],
       "requiredOutcomeClasses": [],
@@ -74,6 +75,16 @@
       "inventorySourceIds": [
         "background.keyword-and-metadata",
         "background.review-and-sentiment"
+      ],
+      "requiredEvidence": [],
+      "requiredOutcomeClasses": [],
+      "minimumFidelity": "simulated"
+    },
+    {
+      "id": "persistence-semantics",
+      "description": "Schema-backed reads, writes, and duplicate-prevention guarantees.",
+      "inventorySourceIds": [
+        "persistence.prisma-and-schema"
       ],
       "requiredEvidence": [],
       "requiredOutcomeClasses": [],

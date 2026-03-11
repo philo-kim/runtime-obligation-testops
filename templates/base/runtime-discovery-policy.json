@@ -1,0 +1,20 @@
+{
+  "$schema": "./runtime-discovery-policy.schema.json",
+  "version": "1.0.0",
+  "principle": "runtime-obligation-first",
+  "ignorePatterns": [
+    "**/*.d.ts",
+    "**/*.test.*",
+    "**/*.spec.*",
+    "**/__tests__/**",
+    "**/test/**",
+    "**/tests/**",
+    "**/node_modules/**",
+    "**/.git/**",
+    "**/.next/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/coverage/**"
+  ],
+  "suppressions": []
+}

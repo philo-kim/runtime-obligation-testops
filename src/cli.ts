@@ -3,6 +3,7 @@ import path from "node:path";
 import { existsSync, readFileSync } from "node:fs";
 import {
   DEFAULT_CONFIG_PATH,
+  DEFAULT_DISCOVERY_POLICY_PATH,
   DEFAULT_FIDELITY_POLICY_PATH,
   DEFAULT_INVENTORY_PATH,
   DEFAULT_REPORT_JSON_PATH,
@@ -93,16 +94,16 @@ function printHelp(): void {
   console.log("");
   console.log("Commands:");
   console.log("  rotops init [--preset vitest] [--force]");
-  console.log("  rotops inventory scan [--root path] [--out path]");
+  console.log("  rotops inventory scan [--root path] [--policy path] [--out path]");
   console.log("  rotops surfaces derive [--root path] [--inventory path] [--out path]");
   console.log(
-    "  rotops validate [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--root path] [--allow-missing-annotations]",
+    "  rotops validate [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--discovery-policy path] [--root path] [--allow-missing-annotations]",
   );
   console.log(
-    "  rotops report [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--root path] [--allow-missing-annotations]",
+    "  rotops report [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--discovery-policy path] [--root path] [--allow-missing-annotations]",
   );
   console.log(
-    "  rotops impact [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--root path] --changed path [--changed path]",
+    "  rotops impact [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--discovery-policy path] [--root path] --changed path [--changed path]",
   );
   console.log(
     "  rotops export vitest-workspace [--config path] [--root path] [--out path] [--alias @=./src]",
@@ -125,11 +126,25 @@ function commandInit(parsed: ParsedArgs): void {
 
 function commandInventoryScan(parsed: ParsedArgs): void {
   const repoRoot = resolveRoot(parsed);
+  const discoveryPolicyPath = getFlag(
+    parsed,
+    "policy",
+    getFlag(parsed, "discovery-policy", DEFAULT_DISCOVERY_POLICY_PATH),
+  );
+  const model = loadProjectModel(repoRoot, {
+    controlPlanePath: getFlag(parsed, "config", DEFAULT_CONFIG_PATH),
+    inventoryPath: getFlag(parsed, "inventory", DEFAULT_INVENTORY_PATH),
+    surfaceCatalogPath: getFlag(parsed, "surfaces", DEFAULT_SURFACES_PATH),
+    fidelityPolicyPath: getFlag(parsed, "fidelity", DEFAULT_FIDELITY_POLICY_PATH),
+    discoveryPolicyPath,
+  });
   const outputPath = path.resolve(
     repoRoot,
     getFlag(parsed, "out", DEFAULT_INVENTORY_PATH) ?? DEFAULT_INVENTORY_PATH,
   );
-  const inventory = scanRuntimeInventory(repoRoot);
+  const inventory = scanRuntimeInventory(repoRoot, {
+    discoveryPolicy: model.discoveryPolicy,
+  });
   maybeWriteJson(outputPath, inventory);
   console.log(path.relative(repoRoot, outputPath));
 }
@@ -142,6 +157,7 @@ function commandSurfaceDerive(parsed: ParsedArgs): void {
     inventoryPath,
     surfaceCatalogPath: getFlag(parsed, "surfaces", DEFAULT_SURFACES_PATH),
     fidelityPolicyPath: getFlag(parsed, "fidelity", DEFAULT_FIDELITY_POLICY_PATH),
+    discoveryPolicyPath: getFlag(parsed, "discovery-policy", DEFAULT_DISCOVERY_POLICY_PATH),
   });
 
   if (!model.inventory) {
@@ -164,12 +180,14 @@ function validateAndMaybeReport(parsed: ParsedArgs, reportOnly: boolean): void {
     inventoryPath: getFlag(parsed, "inventory", DEFAULT_INVENTORY_PATH),
     surfaceCatalogPath: getFlag(parsed, "surfaces", DEFAULT_SURFACES_PATH),
     fidelityPolicyPath: getFlag(parsed, "fidelity", DEFAULT_FIDELITY_POLICY_PATH),
+    discoveryPolicyPath: getFlag(parsed, "discovery-policy", DEFAULT_DISCOVERY_POLICY_PATH),
   });
   const summary = validateControlPlane(model.controlPlane, repoRoot, {
     requireAnnotations: !hasFlag(parsed, "allow-missing-annotations"),
     inventory: model.inventory,
     surfaceCatalog: model.surfaceCatalog,
     fidelityPolicy: model.fidelityPolicy,
+    discoveryPolicy: model.discoveryPolicy,
   });
 
   const reports = writeReports(
@@ -208,6 +226,7 @@ function commandImpact(parsed: ParsedArgs): void {
     inventoryPath: getFlag(parsed, "inventory", DEFAULT_INVENTORY_PATH),
     surfaceCatalogPath: getFlag(parsed, "surfaces", DEFAULT_SURFACES_PATH),
     fidelityPolicyPath: getFlag(parsed, "fidelity", DEFAULT_FIDELITY_POLICY_PATH),
+    discoveryPolicyPath: getFlag(parsed, "discovery-policy", DEFAULT_DISCOVERY_POLICY_PATH),
   });
 
   const impact = analyzeImpact(repoRoot, model, changedFiles);

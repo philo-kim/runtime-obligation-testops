@@ -26,7 +26,9 @@
       "description": "Credential validation and protected-route access control.",
       "sourcePatterns": [
         "src/middleware.ts",
-        "src/lib/auth.ts"
+        "src/lib/auth.ts",
+        "src/app/api/auth/[...nextauth]/route.ts",
+        "src/app/api/auth/register/route.ts"
       ],
       "testPatterns": [
         "src/test/auth.unit.test.ts",
@@ -76,10 +78,14 @@
       "description": "Client bootstrap, provider wiring, and first app selection.",
       "sourcePatterns": [
         "src/components/providers.tsx",
-        "src/lib/app-context.tsx"
+        "src/lib/app-context.tsx",
+        "src/app/layout.tsx",
+        "src/app/(auth)/layout.tsx",
+        "src/app/(dashboard)/layout.tsx"
       ],
       "testPatterns": [
-        "src/test/app-context.component.test.tsx"
+        "src/test/app-context.component.test.tsx",
+        "src/test/layouts.component.test.tsx"
       ],
       "execution": {
         "runner": "vitest",
@@ -88,7 +94,8 @@
           "src/test/setup.component.ts"
         ],
         "include": [
-          "src/test/app-context.component.test.tsx"
+          "src/test/app-context.component.test.tsx",
+          "src/test/layouts.component.test.tsx"
         ]
       }
     },
@@ -211,6 +218,28 @@
       }
     },
     {
+      "id": "persistence-semantics",
+      "description": "Schema-backed reads, writes, and duplicate-prevention guarantees.",
+      "sourcePatterns": [
+        "src/lib/prisma.ts",
+        "prisma/schema.prisma"
+      ],
+      "testPatterns": [
+        "src/test/persistence.integration.test.ts"
+      ],
+      "execution": {
+        "runner": "vitest",
+        "environment": "node",
+        "setupFiles": [
+          "src/test/setup.integration.ts"
+        ],
+        "include": [
+          "src/test/persistence.integration.test.ts"
+        ],
+        "testTimeout": 15000
+      }
+    },
+    {
       "id": "external-contracts",
       "description": "Adapters that interpret external provider responses and failure modes.",
       "sourcePatterns": [
@@ -305,7 +334,9 @@
       "id": "auth.credentials-and-oauth-contract",
       "surface": "auth-access",
       "sourcePatterns": [
-        "src/lib/auth.ts"
+        "src/lib/auth.ts",
+        "src/app/api/auth/[...nextauth]/route.ts",
+        "src/app/api/auth/register/route.ts"
       ],
       "event": "Credential login or OAuth user creation is processed by Auth.js callbacks.",
       "outcomes": [
@@ -584,6 +615,31 @@
       ]
     },
     {
+      "id": "client.layout-shells",
+      "surface": "app-bootstrap",
+      "sourcePatterns": [
+        "src/app/layout.tsx",
+        "src/app/(auth)/layout.tsx",
+        "src/app/(dashboard)/layout.tsx"
+      ],
+      "event": "Root, auth, and dashboard layout shells mount their wrapper structure.",
+      "outcomes": [
+        "The root layout wraps children with Providers.",
+        "The auth layout centers its content shell.",
+        "The dashboard layout delegates to AppLayout."
+      ],
+      "outcomeClasses": [
+        "success"
+      ],
+      "evidence": [
+        "derived_view"
+      ],
+      "fidelity": "simulated",
+      "ownerTests": [
+        "src/test/layouts.component.test.tsx"
+      ]
+    },
+    {
       "id": "client.auth-pages-transitions",
       "surface": "client-state",
       "sourcePatterns": [
@@ -844,6 +900,35 @@
       "ownerTests": [
         "src/test/workers.unit.test.ts",
         "src/test/api-routes/cron.integration.test.ts"
+      ]
+    },
+    {
+      "id": "persistence.registration-and-review-deduplication",
+      "surface": "persistence-semantics",
+      "sourcePatterns": [
+        "src/lib/prisma.ts",
+        "prisma/schema.prisma",
+        "src/app/api/auth/register/route.ts",
+        "src/workers/index.ts"
+      ],
+      "event": "Prisma-backed registration and review-ingestion flows read before write and prevent duplicates.",
+      "outcomes": [
+        "Registration writes a user and default workspace on success.",
+        "Duplicate account creation is rejected before a second write.",
+        "Review ingestion skips already-known review identifiers instead of writing duplicates."
+      ],
+      "outcomeClasses": [
+        "success",
+        "duplicate"
+      ],
+      "evidence": [
+        "storage_read",
+        "storage_write",
+        "response"
+      ],
+      "fidelity": "simulated",
+      "ownerTests": [
+        "src/test/persistence.integration.test.ts"
       ]
     },
     {

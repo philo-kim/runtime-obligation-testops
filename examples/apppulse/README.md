@@ -1,10 +1,44 @@
 # AppPulse Example
 
-This example shows how a real product can express its automated testing system through:
+This example shows how a real product expresses its automated test system as a reviewed runtime model.
 
-- runtime inventory
-- runtime surfaces
-- runtime obligations
-- fidelity policy
+## Included artifacts
 
-The files are illustrative. They exist to show how to model a production application, not to validate inside this package repository.
+- `testops/runtime-discovery-policy.json`
+- `testops/runtime-inventory.json`
+- `testops/runtime-surfaces.json`
+- `testops/runtime-control-plane.json`
+- `testops/fidelity-policy.json`
+
+## What the example demonstrates
+
+- discovery is reviewed instead of blindly trusted
+- the runtime denominator is explicit
+- runtime surfaces are project-specific, not fixed by the package
+- obligations own observable evidence and owner tests
+- fidelity is an explicit policy decision
+
+## Why this example matters
+
+AppPulse is not a toy folder structure.
+It has:
+
+- auth and protected access
+- API route contracts
+- client bootstrap and state transitions
+- persistence and deduplication rules
+- background workers
+- external provider adapters
+
+That makes it a good illustration of how the model scales beyond unit-vs-integration labels.
+
+## How to read it
+
+1. Start with `runtime-discovery-policy.json`
+2. Review the accepted denominator in `runtime-inventory.json`
+3. See how the denominator is partitioned in `runtime-surfaces.json`
+4. Follow obligations and owner tests in `runtime-control-plane.json`
+5. Inspect proof-strength requirements in `fidelity-policy.json`
+
+The example is illustrative.
+It mirrors a real application model, but it is not executed inside this package repository.

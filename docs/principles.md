@@ -64,9 +64,17 @@ This package treats traceability drift as a first-class failure.
 
 ## Operational implication
 
-The package therefore manages four connected artifacts:
+The package therefore manages five connected artifacts:
 
+- runtime discovery policy: how candidate runtime sources are found and reviewed
 - runtime inventory: the full set of externally reachable runtime sources
 - surface catalog: the project-specific management partition over that inventory
 - control plane: the obligation, evidence, and owner-test graph
 - fidelity policy: the minimum proof strength expected for each layer of that graph
+
+## Practical consequence
+
+The package treats `declared model only` as insufficient.
+
+A repo can look clean while still missing part of the runtime denominator.
+That is why the validator compares the reviewed model against discovered runtime candidates.
