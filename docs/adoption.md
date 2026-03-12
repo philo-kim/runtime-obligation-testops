@@ -20,6 +20,19 @@ Begin with what can actually happen at runtime:
 The point of adoption is not to rename tests.
 The point is to make the runtime denominator explicit and governable.
 
+## Adoption map
+
+```mermaid
+flowchart LR
+  A[Pilot runtime slice] --> B[Discovery policy]
+  B --> C[Review backlog]
+  C --> D[Reviewed inventory]
+  D --> E[Surface catalog]
+  E --> F[Obligations + owner tests]
+  F --> G[Validate / Impact in CI]
+  G --> H[Expand managed scope]
+```
+
 ## When this package is worth adopting
 
 Adopt it when a repo already has meaningful automation, but still struggles to answer:
@@ -155,6 +168,17 @@ npx rotops export agent-contract
 
 That contract is not the source of truth by itself.
 It is the generated operational view that tells agents which artifacts to read first and which commands are non-negotiable.
+
+## Staged strictness
+
+```mermaid
+flowchart TD
+  A[Advisory discovery] --> B[Scoped pilot]
+  B --> C[Hand-reviewed inventory]
+  C --> D[Quality policy]
+  D --> E[Strict validate gate]
+  E --> F[Wider runtime scope]
+```
 
 ## What a good rollout looks like
 

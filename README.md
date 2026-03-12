@@ -46,6 +46,27 @@ That is why this package exists.
 It is not a prettier coverage tool.
 It is a control system for the runtime denominator itself.
 
+## Runtime governance model
+
+```mermaid
+flowchart LR
+  A[Runtime codebase] --> B[Discovery policy]
+  B --> C[Discovered runtime candidates]
+  C --> D[Reviewed runtime inventory]
+  D --> E[Runtime surfaces]
+  E --> F[Runtime obligations]
+  F --> G[Evidence and owner tests]
+  G --> H[Validate / Review / Impact]
+  H --> I[CI gate]
+
+  J[Fidelity policy] --> F
+  K[Quality policy] --> D
+  K --> F
+```
+
+The package governs that graph.
+Not just the tests at the bottom of it.
+
 ## What problem it solves
 
 Most repos can tell you:
@@ -73,6 +94,25 @@ It also handles a second failure mode that appears after teams adopt a reviewed 
 - but one inventory source or one obligation is so broad that real test gaps still hide inside it
 
 `runtime-quality-policy.json` exists to make that reviewed-model smell explicit instead of letting it live behind a green control plane.
+
+## Why line coverage is not enough
+
+```mermaid
+flowchart TD
+  A[Many tests] --> B[High code coverage]
+  C[unit / integration / component labels] --> B
+  B --> D[Looks healthy]
+  D --> E[Missing runtime layer can still hide]
+
+  F[runtime-obligation governance] --> G[Discovered vs reviewed drift]
+  F --> H[Surface / obligation closure]
+  F --> I[Evidence / owner-test traceability]
+  F --> J[Granularity quality gates]
+  G --> K[Managed runtime denominator]
+  H --> K
+  I --> K
+  J --> K
+```
 
 ## What the package actually manages
 
@@ -123,6 +163,20 @@ Repo-local policy tells the core how this specific codebase should be interprete
 
 That split matters.
 It lets the package stay universal without pretending that every codebase emits the same scanner signals.
+
+## Discovered vs reviewed
+
+```mermaid
+flowchart LR
+  A[Scanner output] -->|candidate set| B{Review}
+  B -->|accept| C[Reviewed inventory]
+  B -->|suppress| D[Reviewed suppression]
+  B -->|defer| E[Review backlog]
+  C --> F[Surfaces]
+  F --> G[Obligations]
+  G --> H[Owner tests]
+  H --> I[Runtime proof]
+```
 
 ## The key design choice: discovered vs reviewed
 
@@ -254,6 +308,28 @@ The safe sequence is:
 5. move discovery drift to `error` once the scanner is trustworthy for that repo
 
 That rollout works better than pretending heuristics are already perfect.
+
+## Agent operating loop
+
+```mermaid
+sequenceDiagram
+  participant AI as AI agent
+  participant Repo as Repo-local policy
+  participant R as rotops
+  participant CI as CI gate
+
+  AI->>R: impact --changed <files>
+  AI->>R: inventory scan
+  R-->>AI: discovered candidates
+  AI->>Repo: accept / suppress / defer
+  AI->>Repo: update inventory / surfaces / obligations / owner tests
+  AI->>R: review
+  AI->>R: validate
+  AI->>R: runtime tests
+  AI->>R: code coverage (secondary)
+  R-->>CI: governance result
+  CI-->>AI: pass or fail
+```
 
 ## Recommended operating loop
 

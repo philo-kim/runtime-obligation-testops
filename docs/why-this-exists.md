@@ -16,6 +16,27 @@ and still could not answer a basic operational question:
 
 That gap is what this package exists to close.
 
+## Failure mode in one picture
+
+```mermaid
+flowchart TD
+  A[Many tests] --> B[Green CI]
+  C[High line coverage] --> B
+  D[Familiar test labels] --> B
+  B --> E[False confidence]
+  E --> F[Unmanaged runtime layer]
+  F --> G[Production regression risk]
+
+  H[runtime-obligation-testops] --> I[Reviewed denominator]
+  H --> J[Discovery drift checks]
+  H --> K[Obligation / evidence ownership]
+  H --> L[Granularity policy]
+  I --> M[Governed runtime scope]
+  J --> M
+  K --> M
+  L --> M
+```
+
 ## The failure mode
 
 The failure mode was not "there are too few tests."
