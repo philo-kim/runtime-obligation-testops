@@ -1,7 +1,7 @@
 import type {
   FidelityPolicy,
-  Obligation,
   RuntimeControlPlane,
+  RuntimeBehaviorUnit,
   RuntimeInventorySource,
   RuntimeSurfaceDefinition,
 } from "./types.js";
@@ -56,7 +56,7 @@ export function obligationMeetsFidelity(
 
 export function resolveMinimumFidelity(args: {
   controlPlane: RuntimeControlPlane;
-  obligation: Obligation;
+  obligation: RuntimeBehaviorUnit;
   surface?: RuntimeSurfaceDefinition;
   inventorySources?: RuntimeInventorySource[];
   fidelityPolicy?: FidelityPolicy;

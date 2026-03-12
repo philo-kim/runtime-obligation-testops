@@ -1,3 +1,4 @@
+import { behaviorOwnerTests, getBehaviorUnits } from "./behaviors.js";
 import { expandPatterns, toPosix } from "./fs-utils.js";
 import type {
   ImpactAnalysis,
@@ -54,15 +55,15 @@ export function analyzeImpact(
   const derivedSurfaceIds = model.surfaceCatalog
     ? impactedSurfaceIds(inventorySources, model.surfaceCatalog.surfaces)
     : [];
-  const changedByObligation = model.controlPlane.obligations.filter((obligation) =>
-    sourceMatchesChangedFiles(repoRoot, obligation.sourcePatterns, normalizedChangedFiles),
+  const changedByBehavior = getBehaviorUnits(model.controlPlane).filter((behavior) =>
+    sourceMatchesChangedFiles(repoRoot, behavior.sourcePatterns, normalizedChangedFiles),
   );
-  const obligationIds = [...new Set(changedByObligation.map((obligation) => obligation.id))].sort();
-  const ownerTests = [...new Set(changedByObligation.flatMap((obligation) => obligation.ownerTests))].sort();
+  const behaviorIds = [...new Set(changedByBehavior.map((behavior) => behavior.id))].sort();
+  const ownerTests = [...new Set(changedByBehavior.flatMap((behavior) => behaviorOwnerTests(behavior)))].sort();
   const surfaceIds = [
     ...new Set([
       ...derivedSurfaceIds,
-      ...changedByObligation.map((obligation) => obligation.surface),
+      ...changedByBehavior.map((behavior) => behavior.surface),
     ]),
   ].sort();
 
@@ -70,7 +71,8 @@ export function analyzeImpact(
     changedFiles: normalizedChangedFiles,
     impactedInventorySources: inventorySources.map((source) => source.id).sort(),
     impactedSurfaces: surfaceIds,
-    impactedObligations: obligationIds,
+    impactedBehaviors: behaviorIds,
+    impactedObligations: behaviorIds,
     impactedOwnerTests: ownerTests,
   };
 }

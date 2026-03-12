@@ -4,6 +4,7 @@ export * from "./schema.js";
 export * from "./model.js";
 export * from "./inventory.js";
 export * from "./derivation.js";
+export * from "./behaviors.js";
 export * from "./fidelity.js";
 export * from "./impact.js";
 export * from "./review.js";

@@ -35,7 +35,7 @@ export function buildRuntimeAgentContract(
     {
       id: "impact",
       command: "rotops impact --changed <path>",
-      purpose: "Map changed runtime files to reviewed inventory sources, surfaces, obligations, and owner tests.",
+      purpose: "Map changed runtime files to reviewed inventory sources, surfaces, behavior units, and owner tests.",
       blocking: false,
     },
     {
@@ -53,7 +53,7 @@ export function buildRuntimeAgentContract(
     operatingModel:
       "AI agents, repo-local policy, and CI maintain the reviewed runtime model continuously; reviewed decisions are reserved for semantic approval, not routine bookkeeping.",
     reviewedDecisionMeaning:
-      "Approve or reject the semantic treatment of discovered runtime candidates, denominator boundaries, obligation scope, evidence sufficiency, fidelity, and suppressions.",
+      "Approve or reject the semantic treatment of discovered runtime candidates, denominator boundaries, behavior-unit scope, evidence sufficiency, fidelity, and suppressions.",
     actorRoles: [
       {
         id: "discovery-engine",
@@ -123,7 +123,7 @@ export function buildRuntimeAgentContract(
       "compare discovered candidates against the reviewed model",
       "update repo-local discovery policy if the scanner is noisy or blind for this slice",
       "check whether reviewed-model granularity still satisfies runtime-quality-policy",
-      "let AI update inventory, surfaces, obligations, evidence, annotations, and owner tests before asking for reviewed approval",
+      "let AI update inventory, surfaces, behavior units, evidence, annotations, and owner tests before asking for reviewed approval",
       "escalate only semantic approval decisions instead of manual bookkeeping",
       "rerun validate before considering the change complete",
     ],

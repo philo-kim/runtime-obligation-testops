@@ -1,5 +1,6 @@
 import path from "node:path";
 import { existsSync, readFileSync } from "node:fs";
+import { behaviorImplementationStatus, behaviorOwnerTests, getBehaviorUnits } from "./behaviors.js";
 import { obligationMeetsFidelity, resolveMinimumFidelity } from "./fidelity.js";
 import { expandPatterns, parseRuntimeObligationsAnnotation } from "./fs-utils.js";
 import { getDiscoveryRuleIds, scanRuntimeInventory } from "./inventory.js";
@@ -13,10 +14,10 @@ import {
 } from "./schema.js";
 import type {
   InventorySourceQualityRule,
-  Obligation,
   ObligationQualityRule,
   RuntimeControlPlane,
   RuntimeDiscoveryPolicy,
+  RuntimeBehaviorUnit,
   RuntimeInventory,
   RuntimeInventorySource,
   RuntimeQualityPolicy,
@@ -119,7 +120,7 @@ function validateQualityPolicySemantics(
 
   const knownSurfaceIds = new Set(controlPlane.surfaces.map((surface) => surface.id));
   const knownInventorySourceIds = new Set(inventory?.sources.map((source) => source.id) ?? []);
-  const knownObligationIds = new Set(controlPlane.obligations.map((obligation) => obligation.id));
+  const knownObligationIds = new Set(getBehaviorUnits(controlPlane).map((behavior) => behavior.id));
 
   const seenSurfaceIds = new Set<string>();
   for (const surfacePolicy of qualityPolicy.surfacePolicies ?? []) {
@@ -284,14 +285,14 @@ function overlap(left: string[], right: string[]): string[] {
   return left.filter((value) => rightSet.has(value));
 }
 
-function parseOutcomeClasses(obligation: Obligation): string[] {
-  if (obligation.outcomeClasses && obligation.outcomeClasses.length > 0) {
-    return [...new Set(obligation.outcomeClasses)].sort();
+function parseOutcomeClasses(behavior: RuntimeBehaviorUnit): string[] {
+  if (behavior.outcomeClasses && behavior.outcomeClasses.length > 0) {
+    return [...new Set(behavior.outcomeClasses)].sort();
   }
 
   const classes = new Set<string>();
 
-  for (const outcome of obligation.outcomes) {
+  for (const outcome of behavior.outcomes) {
     const normalized = outcome.toLowerCase();
     if (
       /\bsuccess\b|\bcontinue\b|\bprocessed\b|\bcreated\b|\bloaded\b|\brendered\b|\baccepted\b|\battached\b/.test(
@@ -464,6 +465,8 @@ export function validateControlPlane(
     discoveredInventory?.principle,
   );
 
+  const behaviorUnits = getBehaviorUnits(controlPlane);
+
   uniqueIdIssues(
     issues,
     "surface id",
@@ -471,8 +474,8 @@ export function validateControlPlane(
   );
   uniqueIdIssues(
     issues,
-    "obligation id",
-    controlPlane.obligations.map((obligation) => obligation.id),
+    "behavior id",
+    behaviorUnits.map((behavior) => behavior.id),
   );
   uniqueIdIssues(
     issues,
@@ -499,10 +502,10 @@ export function validateControlPlane(
     });
   }
 
-  if (controlPlane.obligations.length === 0) {
+  if (behaviorUnits.length === 0) {
     issues.push({
       level: "error",
-      message: "The control plane does not define any runtime obligations",
+      message: "The control plane does not define any runtime behavior units",
     });
   }
 
@@ -626,8 +629,9 @@ export function validateControlPlane(
   const obligationSources = new Map<string, string[]>();
   const obligationInventorySources = new Map<string, RuntimeInventorySource[]>();
   const outcomesByObligation = new Map<string, string[]>();
+  let incompleteBehaviorUnits = 0;
 
-  for (const obligation of controlPlane.obligations) {
+  for (const obligation of behaviorUnits) {
     const surface = surfaceById(controlPlane, obligation.surface);
 
     if (!surface) {
@@ -675,6 +679,15 @@ export function validateControlPlane(
       });
     }
 
+    const implementationStatus = behaviorImplementationStatus(obligation);
+    if (implementationStatus !== "implemented") {
+      incompleteBehaviorUnits += 1;
+      issues.push({
+        level: "error",
+        message: `Behavior ${obligation.id} is marked ${implementationStatus} and is not fully implemented`,
+      });
+    }
+
     const sources = expandPatterns(
       repoRoot,
       obligation.sourcePatterns,
@@ -690,19 +703,34 @@ export function validateControlPlane(
     }
 
     const matchedInventorySources = inventory
-      ? inventory.sources.filter((source) => {
-          if (overlap(sources, inventoryFilesById.get(source.id) ?? []).length === 0) {
-            return false;
-          }
+      ? obligation.inventorySourceIds && obligation.inventorySourceIds.length > 0
+        ? obligation.inventorySourceIds
+            .map((sourceId) => inventorySourceById(inventory, sourceId))
+            .filter((source): source is RuntimeInventorySource => Boolean(source))
+        : inventory.sources.filter((source) => {
+            if (overlap(sources, inventoryFilesById.get(source.id) ?? []).length === 0) {
+              return false;
+            }
 
-          if (!surfaceCatalog) {
-            return true;
-          }
+            if (!surfaceCatalog) {
+              return true;
+            }
 
-          return sourceToSurfaceMap.get(source.id) === obligation.surface;
-        })
+            return sourceToSurfaceMap.get(source.id) === obligation.surface;
+          })
       : [];
     obligationInventorySources.set(obligation.id, matchedInventorySources);
+
+    if (inventory && obligation.inventorySourceIds?.length) {
+      for (const sourceId of obligation.inventorySourceIds) {
+        if (!inventorySourceById(inventory, sourceId)) {
+          issues.push({
+            level: "error",
+            message: `Behavior ${obligation.id} references unknown inventory source ${sourceId}`,
+          });
+        }
+      }
+    }
 
     if (inventory && matchedInventorySources.length === 0) {
       issues.push({
@@ -737,7 +765,15 @@ export function validateControlPlane(
       });
     }
 
-    for (const ownerTest of obligation.ownerTests) {
+    const ownerTests = behaviorOwnerTests(obligation);
+    if (ownerTests.length === 0) {
+      issues.push({
+        level: "error",
+        message: `Behavior ${obligation.id} does not declare any owner tests`,
+      });
+    }
+
+    for (const ownerTest of ownerTests) {
       const absoluteOwnerTest = path.join(repoRoot, ownerTest);
       if (!existsSync(absoluteOwnerTest)) {
         issues.push({
@@ -792,7 +828,7 @@ export function validateControlPlane(
       }
 
       const catalogSurface = catalogSurfaceById(surfaceCatalog, surfaceId);
-      const obligations = controlPlane.obligations.filter((obligation) =>
+      const obligations = behaviorUnits.filter((obligation) =>
         obligationInventorySources
           .get(obligation.id)
           ?.some((matchedSource) => matchedSource.id === source.id),
@@ -801,7 +837,7 @@ export function validateControlPlane(
       if (obligations.length === 0) {
         issues.push({
           level: "error",
-          message: `Inventory source ${source.id} does not have any owning obligations`,
+          message: `Inventory source ${source.id} does not have any owning behavior units`,
         });
         continue;
       }
@@ -856,7 +892,7 @@ export function validateControlPlane(
     }
   }
 
-  for (const obligation of controlPlane.obligations) {
+  for (const obligation of behaviorUnits) {
     const obligationQualityRule = resolveObligationQualityRule(
       qualityPolicy,
       obligation.surface,
@@ -893,7 +929,7 @@ export function validateControlPlane(
   const surfaceSummaries: SurfaceSummary[] = controlPlane.surfaces.map((surface) => {
     const sources = surfaceSources.get(surface.id) ?? [];
     const tests = surfaceTests.get(surface.id) ?? [];
-    const obligations = controlPlane.obligations.filter(
+    const obligations = behaviorUnits.filter(
       (obligation) => obligation.surface === surface.id,
     );
     const coveredSources = new Set<string>();
@@ -954,6 +990,7 @@ export function validateControlPlane(
       sources: sources.length,
       tests: tests.length,
       obligations: obligations.length,
+      behaviors: obligations.length,
       uncoveredSources,
       unreferencedTests,
     };
@@ -967,6 +1004,8 @@ export function validateControlPlane(
     discoveredSources: discoveredInventory?.sources.length,
     discoveredFiles: discoveredInventoryGrouped?.sourcesByFile.size,
     discoveryScopePatterns: discoveryPolicy?.scopePatterns,
+    behaviorUnits: behaviorUnits.length,
+    incompleteBehaviorUnits,
     surfaceSummaries,
     issues,
   };
@@ -995,13 +1034,15 @@ export function printSummary(summary: ValidationSummary): void {
   if (summary.discoveredFiles !== undefined) {
     console.log(`- discovered files: ${summary.discoveredFiles}`);
   }
+  console.log(`- behavior units: ${summary.behaviorUnits}`);
+  console.log(`- incomplete behavior units: ${summary.incompleteBehaviorUnits}`);
   if (summary.discoveryScopePatterns?.length) {
     console.log(`- discovery scope: ${summary.discoveryScopePatterns.join(", ")}`);
   }
 
   for (const surface of summary.surfaceSummaries) {
     console.log(
-      `- ${surface.id}: sources=${surface.sources}, tests=${surface.tests}, obligations=${surface.obligations}, uncovered=${surface.uncoveredSources.length}, unreferencedTests=${surface.unreferencedTests.length}`,
+      `- ${surface.id}: sources=${surface.sources}, tests=${surface.tests}, behaviors=${surface.behaviors}, uncovered=${surface.uncoveredSources.length}, unreferencedTests=${surface.unreferencedTests.length}`,
     );
   }
 

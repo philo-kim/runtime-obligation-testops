@@ -4,7 +4,7 @@
 
 The package exists for one governing rule:
 
-`automated testing is managed against the full set of runtime obligations`
+`automated testing is managed against the full set of runtime behavior units`
 
 That rule is enforced through four properties:
 
@@ -139,7 +139,7 @@ The package manages six connected artifacts:
 - `runtime-surfaces.json`
   - the project-specific management partition over that denominator
 - `runtime-control-plane.json`
-  - obligations, evidence, fidelity, owner tests
+  - behavior units, evidence, fidelity, owner tests
 - `fidelity-policy.json`
   - the minimum proof strength required by surface, source, or obligation
 - `runtime-quality-policy.json`
@@ -148,6 +148,9 @@ The package manages six connected artifacts:
 The first artifact manages discovery.
 The next four artifacts are the reviewed runtime model.
 The final artifact governs whether that reviewed model is still granular enough to trust.
+
+`runtime-obligation-testops` keeps its historical name, but the preferred proof unit is now the `runtime behavior unit`.
+Legacy `obligations` remain supported for backward compatibility and are interpreted as behavior units by the validator.
 
 ## Universal core, repo-local policy
 

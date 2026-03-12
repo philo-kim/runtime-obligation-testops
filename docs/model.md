@@ -88,11 +88,11 @@ Examples in different projects might include:
 The point is not to force a universal taxonomy.
 The point is to create an operable partition over the reviewed denominator.
 
-## Runtime obligation
+## Runtime behavior unit
 
-A runtime obligation is the minimum managed unit of automated verification.
+A runtime behavior unit is the minimum managed unit of automated verification.
 
-Each obligation records:
+Each behavior unit records:
 
 - the surface it belongs to
 - the runtime source patterns it covers
@@ -102,8 +102,10 @@ Each obligation records:
 - the fidelity level
 - the owner tests
 
-Obligations close the reviewed inventory with concrete proof.
+Behavior units close the reviewed inventory with concrete proof.
 They are the place where runtime behavior stops being informal and becomes test-governed.
+
+The control-plane file still accepts the legacy key name `obligations`, but the preferred model is `behaviors`.
 
 ## Fidelity policy
 

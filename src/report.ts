@@ -29,6 +29,8 @@ export function renderMarkdown(summary: ValidationSummary): string {
   if (summary.discoveredFiles !== undefined) {
     lines.push(`- Discovered Files: ${summary.discoveredFiles}`);
   }
+  lines.push(`- Behavior Units: ${summary.behaviorUnits}`);
+  lines.push(`- Incomplete Behavior Units: ${summary.incompleteBehaviorUnits}`);
   if (summary.discoveryScopePatterns?.length) {
     lines.push(`- Discovery Scope: ${summary.discoveryScopePatterns.join(", ")}`);
   }
@@ -36,12 +38,12 @@ export function renderMarkdown(summary: ValidationSummary): string {
   lines.push(`- Warnings: ${warningCount}`);
   lines.push(`- Issues: ${summary.issues.length}`);
   lines.push("");
-  lines.push("| Surface | Sources | Tests | Obligations | Uncovered | Unreferenced Tests |");
+  lines.push("| Surface | Sources | Tests | Behaviors | Uncovered | Unreferenced Tests |");
   lines.push("|---|---:|---:|---:|---:|---:|");
 
   for (const surface of summary.surfaceSummaries) {
     lines.push(
-      `| ${surface.id} | ${surface.sources} | ${surface.tests} | ${surface.obligations} | ${surface.uncoveredSources.length} | ${surface.unreferencedTests.length} |`,
+      `| ${surface.id} | ${surface.sources} | ${surface.tests} | ${surface.behaviors} | ${surface.uncoveredSources.length} | ${surface.unreferencedTests.length} |`,
     );
   }
 
@@ -50,12 +52,12 @@ export function renderMarkdown(summary: ValidationSummary): string {
   if (summary.issues.length === 0) {
     lines.push("## Status");
     lines.push("");
-    lines.push("- The reviewed runtime denominator is closed by obligations.");
-    lines.push("- Owner tests remain traceable back to reviewed obligations.");
+    lines.push("- The reviewed runtime denominator is closed by behavior units.");
+    lines.push("- Owner tests remain traceable back to reviewed behavior units.");
     if (summary.discoveredFiles !== undefined) {
       lines.push("- Discovered runtime candidates reconcile with the reviewed inventory.");
     }
-    lines.push("- Fidelity and granularity gates are currently green for the reviewed model.");
+    lines.push("- Fidelity, granularity, and behavior completeness gates are currently green for the reviewed model.");
     return lines.join("\n");
   }
 

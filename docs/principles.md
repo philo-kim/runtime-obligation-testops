@@ -11,7 +11,7 @@ Human review remains for semantic approval, not repetitive bookkeeping.
 
 ## Governing rule
 
-`automated testing is managed against the full set of runtime obligations`
+`automated testing is managed against the full set of runtime behavior units`
 
 That rule matters because neither test labels nor line coverage define the real denominator of the system.
 Only runtime behavior does.
@@ -74,7 +74,7 @@ Internal function calls are not enough.
 
 ### Traceability
 
-Every obligation must be traceable:
+Every runtime behavior unit must be traceable:
 
 - back to the runtime source that produced it
 - forward to the tests that prove it

@@ -20,17 +20,23 @@ export interface Surface {
   execution?: ExecutionConfig;
 }
 
-export interface Obligation {
+export type RuntimeBehaviorImplementationStatus = "implemented" | "partial" | "missing";
+
+export interface RuntimeBehaviorUnit {
   id: string;
   surface: string;
   sourcePatterns: string[];
+  inventorySourceIds?: string[];
   event: string;
   outcomes: string[];
   outcomeClasses?: string[];
   evidence: string[];
   fidelity: string;
-  ownerTests: string[];
+  ownerTests?: string[];
+  implementationStatus?: RuntimeBehaviorImplementationStatus;
 }
+
+export type Obligation = RuntimeBehaviorUnit;
 
 export interface RuntimeControlPlane {
   $schema?: string;
@@ -39,7 +45,8 @@ export interface RuntimeControlPlane {
   evidenceKinds: string[];
   fidelityLevels: string[];
   surfaces: Surface[];
-  obligations: Obligation[];
+  obligations?: RuntimeBehaviorUnit[];
+  behaviors?: RuntimeBehaviorUnit[];
 }
 
 export interface RuntimeInventorySource {
@@ -189,6 +196,7 @@ export interface SurfaceSummary {
   sources: number;
   tests: number;
   obligations: number;
+  behaviors: number;
   uncoveredSources: string[];
   unreferencedTests: string[];
 }
@@ -201,6 +209,8 @@ export interface ValidationSummary {
   discoveredSources?: number;
   discoveredFiles?: number;
   discoveryScopePatterns?: string[];
+  behaviorUnits: number;
+  incompleteBehaviorUnits: number;
   surfaceSummaries: SurfaceSummary[];
   issues: ValidationIssue[];
 }
@@ -224,6 +234,7 @@ export interface ImpactAnalysis {
   changedFiles: string[];
   impactedInventorySources: string[];
   impactedSurfaces: string[];
+  impactedBehaviors: string[];
   impactedObligations: string[];
   impactedOwnerTests: string[];
 }

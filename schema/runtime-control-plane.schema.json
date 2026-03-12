@@ -9,8 +9,15 @@
     "principle",
     "evidenceKinds",
     "fidelityLevels",
-    "surfaces",
-    "obligations"
+    "surfaces"
+  ],
+  "anyOf": [
+    {
+      "required": ["obligations"]
+    },
+    {
+      "required": ["behaviors"]
+    }
   ],
   "properties": {
     "$schema": {
@@ -59,7 +66,14 @@
       "type": "array",
       "minItems": 1,
       "items": {
-        "$ref": "#/$defs/obligation"
+        "$ref": "#/$defs/behavior"
+      }
+    },
+    "behaviors": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/behavior"
       }
     }
   },
@@ -167,7 +181,7 @@
         }
       }
     },
-    "obligation": {
+    "behavior": {
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -192,6 +206,14 @@
         "sourcePatterns": {
           "type": "array",
           "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "inventorySourceIds": {
+          "type": "array",
+          "uniqueItems": true,
           "items": {
             "type": "string",
             "minLength": 1
@@ -238,11 +260,18 @@
         },
         "ownerTests": {
           "type": "array",
-          "minItems": 1,
           "items": {
             "type": "string",
             "minLength": 1
           }
+        },
+        "implementationStatus": {
+          "type": "string",
+          "enum": [
+            "implemented",
+            "partial",
+            "missing"
+          ]
         }
       }
     }

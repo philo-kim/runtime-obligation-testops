@@ -158,6 +158,38 @@ describe("validateControlPlane", () => {
     expect(summary.issues).toEqual([]);
   });
 
+  it("accepts behavior units as the primary reviewed proof model", () => {
+    const root = makeTempDir();
+    writeProjectFile(root, "src/entry.ts", "export const entry = true;\n");
+    writeProjectFile(
+      root,
+      "test/entry.test.ts",
+      "// runtime-obligations: request-entry.success\nexport const testFile = true;\n",
+    );
+
+    const inventory = makeInventory();
+    const surfaceCatalog = deriveSurfaceCatalog(inventory);
+    const controlPlane = {
+      ...makeControlPlane(),
+      obligations: undefined,
+      behaviors: makeControlPlane().obligations.map((behavior) => ({
+        ...behavior,
+        implementationStatus: "implemented" as const,
+        inventorySourceIds: ["request-entry"],
+      })),
+    };
+
+    const summary = validateControlPlane(controlPlane, root, {
+      inventory,
+      surfaceCatalog,
+      discoveryPolicy: makeDiscoveryPolicy(),
+    });
+
+    expect(summary.issues).toEqual([]);
+    expect(summary.behaviorUnits).toBe(1);
+    expect(summary.incompleteBehaviorUnits).toBe(0);
+  });
+
   it("reports completeness and fidelity regressions", () => {
     const root = makeTempDir();
     writeProjectFile(root, "src/entry.ts", "export const entry = true;\n");
