@@ -58,7 +58,7 @@ function candidateSuggestion(file: string): {
 
   return {
     suggestedAction: "accept",
-    reasons: ["Path shape looks like a product runtime file and should usually be reviewed into inventory."],
+    reasons: ["Path shape looks like a product runtime file and should usually receive a reviewed runtime decision instead of being ignored implicitly."],
   };
 }
 
@@ -109,14 +109,17 @@ export function generateReviewBacklog(
 
 export function renderReviewMarkdown(backlog: ReviewBacklog): string {
   const lines: string[] = [];
-  lines.push("# Runtime Review Backlog");
+  lines.push("# Reviewed Runtime Decision Backlog");
+  lines.push("");
+  lines.push("This backlog is the semantic review queue for the runtime governance system.");
+  lines.push("AI, repo-local policy, and CI should do most of the mechanical work before a reviewer is asked to approve meaning.");
   lines.push("");
   lines.push(`- Principle: ${backlog.principle}`);
   lines.push(`- Version: ${backlog.version}`);
   lines.push(`- Discovered Sources: ${backlog.discoveredSources}`);
   lines.push(`- Discovered Files: ${backlog.discoveredFiles}`);
   lines.push(`- Declared Inventory Files: ${backlog.declaredInventoryFiles}`);
-  lines.push(`- Unresolved Candidates: ${backlog.unresolvedCandidates}`);
+  lines.push(`- Reviewed Decisions Required: ${backlog.unresolvedCandidates}`);
   if (backlog.discoveryScopePatterns?.length) {
     lines.push(`- Discovery Scope: ${backlog.discoveryScopePatterns.join(", ")}`);
   }
@@ -125,7 +128,7 @@ export function renderReviewMarkdown(backlog: ReviewBacklog): string {
   if (backlog.candidates.length === 0) {
     lines.push("## Status");
     lines.push("");
-    lines.push("- No unresolved discovered candidates remain.");
+    lines.push("- No unresolved reviewed runtime decisions remain.");
     return lines.join("\n");
   }
 
@@ -144,4 +147,29 @@ export function renderReviewMarkdown(backlog: ReviewBacklog): string {
   }
 
   return lines.join("\n");
+}
+
+export function printReviewSummary(backlog: ReviewBacklog): void {
+  console.log(`Reviewed runtime decision backlog ${backlog.version}`);
+  console.log("- governance model: AI + repo-local policy + CI maintain the reviewed runtime model");
+  console.log("- reviewer role: approve semantic decisions when acceptance, suppression, fidelity, or granularity is non-obvious");
+  console.log(`- discovered sources: ${backlog.discoveredSources}`);
+  console.log(`- discovered files: ${backlog.discoveredFiles}`);
+  console.log(`- declared inventory files: ${backlog.declaredInventoryFiles}`);
+  console.log(`- reviewed decisions required: ${backlog.unresolvedCandidates}`);
+  if (backlog.discoveryScopePatterns?.length) {
+    console.log(`- discovery scope: ${backlog.discoveryScopePatterns.join(", ")}`);
+  }
+
+  if (backlog.candidates.length > 0) {
+    console.log("");
+    for (const candidate of backlog.candidates.slice(0, 20)) {
+      console.log(
+        `- ${candidate.file}: action=${candidate.suggestedAction}, sources=${candidate.sourceIds.join(", ")}`,
+      );
+    }
+    if (backlog.candidates.length > 20) {
+      console.log(`- ... ${backlog.candidates.length - 20} more candidates`);
+    }
+  }
 }

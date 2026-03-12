@@ -23,7 +23,7 @@ import { initWorkspace } from "./init.js";
 import { scanRuntimeInventory } from "./inventory.js";
 import { loadProjectModel, resolveProjectPaths } from "./model.js";
 import { writeReports } from "./report.js";
-import { generateReviewBacklog, renderReviewMarkdown } from "./review.js";
+import { generateReviewBacklog, printReviewSummary, renderReviewMarkdown } from "./review.js";
 import { printSummary, validateControlPlane } from "./validation.js";
 import type {
   RuntimeControlPlane,
@@ -277,25 +277,7 @@ function commandReview(parsed: ParsedArgs): void {
   maybeWriteJson(jsonPath, backlog);
   writeTextFile(mdPath, renderReviewMarkdown(backlog));
 
-  console.log(`Runtime review backlog ${backlog.version}`);
-  console.log(`- discovered sources: ${backlog.discoveredSources}`);
-  console.log(`- discovered files: ${backlog.discoveredFiles}`);
-  console.log(`- declared inventory files: ${backlog.declaredInventoryFiles}`);
-  console.log(`- unresolved candidates: ${backlog.unresolvedCandidates}`);
-  if (backlog.discoveryScopePatterns?.length) {
-    console.log(`- discovery scope: ${backlog.discoveryScopePatterns.join(", ")}`);
-  }
-  if (backlog.candidates.length > 0) {
-    console.log("");
-    for (const candidate of backlog.candidates.slice(0, 20)) {
-      console.log(
-        `- ${candidate.file}: action=${candidate.suggestedAction}, sources=${candidate.sourceIds.join(", ")}`,
-      );
-    }
-    if (backlog.candidates.length > 20) {
-      console.log(`- ... ${backlog.candidates.length - 20} more candidates`);
-    }
-  }
+  printReviewSummary(backlog);
   console.log("");
   console.log(path.relative(repoRoot, jsonPath));
   console.log(path.relative(repoRoot, mdPath));

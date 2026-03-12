@@ -2,6 +2,14 @@
 
 This repository packages a `runtime-obligation-first` TestOps system.
 
+The intended operating model is:
+
+- discovery proposes candidates
+- repo-local policy shapes discovery
+- AI performs most runtime-model maintenance
+- review approves semantic decisions
+- CI enforces the gate
+
 The rule is simple:
 
 `automated testing is managed against the full set of runtime obligations, not against code units or test labels`

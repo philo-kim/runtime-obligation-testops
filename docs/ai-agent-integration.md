@@ -5,6 +5,15 @@ An AI agent should treat this system as executable runtime governance, not as op
 The agent's job is not to maximize coverage quickly.
 The agent's job is to keep the runtime denominator, obligations, evidence, and owner tests aligned after each change.
 
+This is not a manual-modeling workflow where a human has to author everything by hand.
+The intended operating model is:
+
+- discovery proposes
+- repo-local policy interprets
+- AI performs most updates
+- review approves semantic meaning
+- CI enforces the gate
+
 ## Read order
 
 Before changing runtime behavior, the agent should read:
@@ -67,6 +76,20 @@ Without this system, agents can easily:
 With this system, the agent has a concrete control loop instead of a vague testing heuristic.
 
 That is why the package ships both machine-readable policy files and human-readable operating guidance.
+
+## Reviewed decision does not mean manual bookkeeping
+
+When the package says a reviewed decision is required, it does not mean a human has to manually maintain every artifact.
+
+It means the repo still needs semantic approval on one of these questions:
+
+- should this discovered candidate become part of the managed denominator
+- is this suppression legitimate
+- is this obligation too coarse
+- is this evidence sufficient
+- is this fidelity level strong enough
+
+Everything else should usually be prepared by AI and policy before review happens.
 
 ## Machine-readable agent contract
 

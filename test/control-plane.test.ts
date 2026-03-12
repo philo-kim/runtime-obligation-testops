@@ -664,6 +664,23 @@ describe("buildRuntimeAgentContract", () => {
 
     expect(contract.readOrder[0]).toBe("testops/runtime-discovery-policy.json");
     expect(contract.readOrder).toContain("testops/runtime-quality-policy.json");
+    expect(contract.systemIdentity).toBe("runtime-governance-control-system");
+    expect(contract.operatingModel).toContain("AI agents");
+    expect(contract.reviewedDecisionMeaning).toContain("semantic treatment");
+    expect(contract.actorRoles.map((role) => role.id)).toEqual([
+      "discovery-engine",
+      "repo-local-policy",
+      "ai-agent",
+      "reviewer",
+      "ci-gate",
+    ]);
+    expect(contract.governanceSignals).toContainEqual(
+      expect.objectContaining({
+        id: "governance-validation",
+        primary: true,
+        blocking: true,
+      }),
+    );
     expect(contract.requiredCommands.map((command) => command.id)).toEqual([
       "review",
       "impact",

@@ -22,6 +22,8 @@ Together they answer five different questions:
 - what proof strength is required
 - whether the reviewed model is still granular enough to expose missing proof
 
+In the intended operating loop, AI updates these artifacts continuously and review approves the semantic decisions that remain.
+
 ## Runtime source
 
 A runtime source is any entrypoint or boundary where system behavior begins.

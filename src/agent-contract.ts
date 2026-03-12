@@ -29,19 +29,19 @@ export function buildRuntimeAgentContract(
     {
       id: "review",
       command: "rotops review",
-      purpose: "Show unresolved discovered candidates that still need reviewed-model decisions.",
+      purpose: "Show unresolved discovered runtime candidates that still need reviewed semantic decisions.",
       blocking: false,
     },
     {
       id: "impact",
       command: "rotops impact --changed <path>",
-      purpose: "Map changed runtime files to inventory sources, surfaces, obligations, and owner tests.",
+      purpose: "Map changed runtime files to reviewed inventory sources, surfaces, obligations, and owner tests.",
       blocking: false,
     },
     {
       id: "validate",
       command: "rotops validate",
-      purpose: "Enforce completeness, traceability, and fidelity gates for the reviewed runtime model.",
+      purpose: "Enforce completeness, traceability, fidelity, and granularity gates for the reviewed runtime model.",
       blocking: true,
     },
   ];
@@ -49,6 +49,64 @@ export function buildRuntimeAgentContract(
   return {
     principle: options.principle,
     version: options.version,
+    systemIdentity: "runtime-governance-control-system",
+    operatingModel:
+      "AI agents, repo-local policy, and CI maintain the reviewed runtime model continuously; reviewed decisions are reserved for semantic approval, not routine bookkeeping.",
+    reviewedDecisionMeaning:
+      "Approve or reject the semantic treatment of discovered runtime candidates, denominator boundaries, obligation scope, evidence sufficiency, fidelity, and suppressions.",
+    actorRoles: [
+      {
+        id: "discovery-engine",
+        responsibility: "Propose runtime candidates and discovered-vs-reviewed drift signals.",
+        authority: "candidate proposal only",
+      },
+      {
+        id: "repo-local-policy",
+        responsibility: "Shape discovery scope, suppressions, overrides, and staged adoption boundaries.",
+        authority: "heuristic interpretation",
+      },
+      {
+        id: "ai-agent",
+        responsibility: "Update the reviewed model, owner tests, annotations, and governance artifacts as the default operator.",
+        authority: "default runtime-governance operator",
+      },
+      {
+        id: "reviewer",
+        responsibility: "Approve semantic decisions when acceptance, suppression, fidelity, or granularity is non-obvious.",
+        authority: "reviewed semantic approval",
+      },
+      {
+        id: "ci-gate",
+        responsibility: "Enforce governance gates so unresolved runtime drift or proof regressions do not merge silently.",
+        authority: "merge enforcement",
+      },
+    ],
+    governanceSignals: [
+      {
+        id: "review-backlog",
+        meaning: "Discovered runtime candidates still need reviewed decisions.",
+        primary: true,
+        blocking: false,
+      },
+      {
+        id: "impact-analysis",
+        meaning: "Changed runtime files are mapped to reviewed model ownership and owner tests.",
+        primary: true,
+        blocking: false,
+      },
+      {
+        id: "governance-validation",
+        meaning: "The reviewed runtime model satisfies completeness, traceability, fidelity, and granularity rules.",
+        primary: true,
+        blocking: true,
+      },
+      {
+        id: "code-coverage",
+        meaning: "Secondary code-execution metric only; never a runtime-completeness claim.",
+        primary: false,
+        blocking: false,
+      },
+    ],
     artifactPaths,
     readOrder: [
       artifactPaths.discoveryPolicyPath,
@@ -65,7 +123,8 @@ export function buildRuntimeAgentContract(
       "compare discovered candidates against the reviewed model",
       "update repo-local discovery policy if the scanner is noisy or blind for this slice",
       "check whether reviewed-model granularity still satisfies runtime-quality-policy",
-      "update inventory, surfaces, obligations, evidence, and owner tests as needed",
+      "let AI update inventory, surfaces, obligations, evidence, annotations, and owner tests before asking for reviewed approval",
+      "escalate only semantic approval decisions instead of manual bookkeeping",
       "rerun validate before considering the change complete",
     ],
     requiredCommands: defaultCommands.map((command) => ({

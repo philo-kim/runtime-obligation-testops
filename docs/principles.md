@@ -6,6 +6,9 @@ This package starts from one operational problem:
 
 The control system exists to prevent that failure mode.
 
+It is meant to be operated by AI agents, repo-local policy, and CI as the default loop.
+Human review remains for semantic approval, not repetitive bookkeeping.
+
 ## Governing rule
 
 `automated testing is managed against the full set of runtime obligations`

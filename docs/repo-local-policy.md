@@ -21,6 +21,8 @@ Use `runtime-discovery-policy.json` to define:
 
 This makes the policy file the portability layer of the system.
 
+In practice this means the package stays universal while AI agents and reviewers use repo-local policy to keep discovery useful in this specific codebase.
+
 ## Why this is better than framework-specific package forks
 
 Framework-specific forks scale poorly because:

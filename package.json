@@ -1,7 +1,7 @@
 {
   "name": "runtime-obligation-testops",
-  "version": "0.6.0",
-  "description": "Universal runtime-obligation-first TestOps control system for AI agents, reviewed runtime completeness, staged adoption, and traceable proof.",
+  "version": "0.6.1",
+  "description": "Universal runtime-obligation-first TestOps control system for AI agents, reviewed runtime governance, staged adoption, and traceable proof.",
   "license": "MIT",
   "type": "module",
   "bin": {

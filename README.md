@@ -67,6 +67,20 @@ flowchart LR
 The package governs that graph.
 Not just the tests at the bottom of it.
 
+## Who decides what
+
+This package is not designed around manual test bookkeeping.
+It is designed around a reviewed operating loop:
+
+- the scanner proposes candidates
+- repo-local policy shapes how those candidates should be interpreted
+- AI agents do most of the inventory, surface, obligation, annotation, and owner-test maintenance
+- reviewers approve semantic decisions when acceptance, suppression, fidelity, or granularity is non-obvious
+- CI enforces the resulting governance gates
+
+That distinction matters.
+If you describe this package as just a validator, people will use it too late in the workflow.
+
 ## What problem it solves
 
 Most repos can tell you:
@@ -191,6 +205,16 @@ If you manage only the reviewed model, teams can accidentally leave real runtime
 If you trust only discovery, you get noisy heuristics instead of an operable system.
 
 `rotops validate` exists to stop those two layers from drifting apart silently.
+
+## Who does what in practice
+
+| Actor | Primary job | What it should not do |
+|---|---|---|
+| Discovery engine | Propose runtime candidates and drift | Declare truth by itself |
+| Repo-local policy | Teach the scanner how this repo expresses runtime | Hide real runtime files just to get green output |
+| AI agent | Perform most model, annotation, and owner-test updates | Stop at line coverage or raw test counts |
+| Reviewer | Approve semantic decisions | Rebuild the whole model manually every time |
+| CI | Enforce governance gates | Replace semantic review |
 
 ## What is universal and what is heuristic
 

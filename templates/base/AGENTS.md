@@ -2,6 +2,14 @@
 
 This repository uses a runtime-obligation-first TestOps control system.
 
+Operate it as:
+
+- discovery proposes candidates
+- repo-local policy shapes discovery
+- AI performs most runtime-model maintenance
+- review approves semantic decisions
+- CI enforces the gate
+
 Before changing tests or behavior:
 
 1. identify the runtime source that changed

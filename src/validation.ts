@@ -975,8 +975,14 @@ export function validateControlPlane(
 export function printSummary(summary: ValidationSummary): void {
   const errorCount = summary.issues.filter((issue) => issue.level === "error").length;
   const warningCount = summary.issues.filter((issue) => issue.level === "warning").length;
+  const governanceStatus = errorCount > 0
+    ? "failing"
+    : warningCount > 0
+      ? "review-required"
+      : "green";
 
-  console.log(`Runtime control plane ${summary.version}`);
+  console.log(`Runtime governance summary ${summary.version}`);
+  console.log(`- governance status: ${governanceStatus}`);
   if (summary.inventorySources !== undefined) {
     console.log(`- inventory sources: ${summary.inventorySources}`);
   }
@@ -1000,7 +1006,7 @@ export function printSummary(summary: ValidationSummary): void {
   }
 
   if (summary.issues.length === 0) {
-    console.log("- issues: 0");
+    console.log("- governance issues: 0");
     return;
   }
 

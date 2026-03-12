@@ -2,6 +2,14 @@
 
 This example shows how a real product expresses its automated test system as a reviewed runtime model.
 
+It is also an example of the intended operating model:
+
+- discovery proposes runtime candidates
+- repo-local policy shapes the scanner
+- AI keeps the reviewed model and owner tests updated
+- review approves meaning where needed
+- CI enforces the governance gate
+
 It matters because this package was extracted from the kind of product represented here:
 
 - multiple runtime entrypoints

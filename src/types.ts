@@ -251,6 +251,19 @@ export interface ReviewBacklog {
   candidates: ReviewCandidate[];
 }
 
+export interface RuntimeActorRole {
+  id: string;
+  responsibility: string;
+  authority: string;
+}
+
+export interface RuntimeGovernanceSignal {
+  id: string;
+  meaning: string;
+  primary: boolean;
+  blocking: boolean;
+}
+
 export interface ArtifactPathMap {
   controlPlanePath: string;
   inventoryPath: string;
@@ -272,6 +285,11 @@ export interface AgentCommand {
 export interface RuntimeAgentContract {
   principle: string;
   version: string;
+  systemIdentity: string;
+  operatingModel: string;
+  reviewedDecisionMeaning: string;
+  actorRoles: RuntimeActorRole[];
+  governanceSignals: RuntimeGovernanceSignal[];
   artifactPaths: ArtifactPathMap;
   readOrder: string[];
   mandatoryLoop: string[];

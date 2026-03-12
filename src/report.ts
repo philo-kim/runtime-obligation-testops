@@ -6,11 +6,17 @@ import type { ValidationSummary } from "./types.js";
 export function renderMarkdown(summary: ValidationSummary): string {
   const errorCount = summary.issues.filter((issue) => issue.level === "error").length;
   const warningCount = summary.issues.filter((issue) => issue.level === "warning").length;
+  const governanceStatus = errorCount > 0
+    ? "failing"
+    : warningCount > 0
+      ? "review-required"
+      : "green";
   const lines: string[] = [];
-  lines.push("# Runtime Control Plane Report");
+  lines.push("# Runtime Governance Report");
   lines.push("");
   lines.push(`- Version: ${summary.version}`);
   lines.push(`- Principle: ${summary.principle}`);
+  lines.push(`- Governance Status: ${governanceStatus}`);
   if (summary.inventorySources !== undefined) {
     lines.push(`- Inventory Sources: ${summary.inventorySources}`);
   }
@@ -44,11 +50,12 @@ export function renderMarkdown(summary: ValidationSummary): string {
   if (summary.issues.length === 0) {
     lines.push("## Status");
     lines.push("");
-    lines.push("- All registered runtime sources are covered by obligations.");
-    lines.push("- All registered owner tests are traceable back to obligations.");
+    lines.push("- The reviewed runtime denominator is closed by obligations.");
+    lines.push("- Owner tests remain traceable back to reviewed obligations.");
     if (summary.discoveredFiles !== undefined) {
-      lines.push("- Discovered runtime candidates reconcile with the declared inventory.");
+      lines.push("- Discovered runtime candidates reconcile with the reviewed inventory.");
     }
+    lines.push("- Fidelity and granularity gates are currently green for the reviewed model.");
     return lines.join("\n");
   }
 

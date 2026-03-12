@@ -25,6 +25,7 @@ and use:
 
 This is already useful.
 It gives you runtime traceability and obligation ownership even before discovery is trusted.
+AI agents can still operate effectively here because `impact`, `validate`, and the reviewed model are already machine-readable.
 
 ### 2. Advisory discovery
 
