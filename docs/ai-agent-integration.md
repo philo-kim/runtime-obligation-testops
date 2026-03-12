@@ -14,8 +14,9 @@ Before changing runtime behavior, the agent should read:
 3. `runtime-surfaces.json`
 4. `runtime-control-plane.json`
 5. `fidelity-policy.json`
-6. `runtime-agent-contract.json` if the repo exports it
-7. `AGENTS.md`
+6. `runtime-quality-policy.json`
+7. `runtime-agent-contract.json` if the repo exports it
+8. `AGENTS.md`
 
 ## Mandatory agent loop
 
@@ -26,11 +27,12 @@ For every runtime change:
 3. compare the change against discovered runtime candidates
 4. run `rotops review` when candidate drift may have changed
 5. review repo-local policy if discovery is too noisy or too blind for that runtime slice
-6. determine whether the reviewed denominator changed
-7. determine which surface owns the change
-8. update or add obligations
-9. update owner tests and `runtime-obligations` annotations
-10. rerun `rotops validate`
+6. check whether the reviewed model is still granular enough under the quality policy
+7. determine whether the reviewed denominator changed
+8. determine which surface owns the change
+9. update or add obligations
+10. update owner tests and `runtime-obligations` annotations
+11. rerun `rotops validate`
 
 If discovery finds a candidate the reviewed model does not account for, the agent must not hide it by editing tests alone.
 The agent must either:

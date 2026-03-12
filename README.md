@@ -66,9 +66,17 @@ Most repos cannot tell you:
 
 This package makes those questions explicit and operational.
 
+It also handles a second failure mode that appears after teams adopt a reviewed model:
+
+- the reviewed model exists
+- validation is green
+- but one inventory source or one obligation is so broad that real test gaps still hide inside it
+
+`runtime-quality-policy.json` exists to make that reviewed-model smell explicit instead of letting it live behind a green control plane.
+
 ## What the package actually manages
 
-The package manages five connected artifacts:
+The package manages six connected artifacts:
 
 - `runtime-discovery-policy.json`
   - scanner rules, ignore patterns, reviewed suppressions
@@ -80,9 +88,12 @@ The package manages five connected artifacts:
   - obligations, evidence, fidelity, owner tests
 - `fidelity-policy.json`
   - the minimum proof strength required by surface, source, or obligation
+- `runtime-quality-policy.json`
+  - reviewed-model quality gates that flag overly broad sources or obligations
 
 The first artifact manages discovery.
-The other four artifacts are the reviewed runtime model.
+The next four artifacts are the reviewed runtime model.
+The final artifact governs whether that reviewed model is still granular enough to trust.
 
 ## Universal core, repo-local policy
 
@@ -135,6 +146,7 @@ The package is strongest at the control layer:
 - `impact`
 - the reviewed runtime model
 - fidelity policy
+- quality policy
 - owner-test traceability
 
 Discovery is intentionally a bootstrap engine, not an oracle.
@@ -215,6 +227,19 @@ npx rotops export agent-contract \
 ```
 
 If your repo uses non-default paths such as `testing/` instead of `testops/`, keep the artifacts where they are and wrap the CLI with project-local scripts.
+
+## Reviewed-model quality
+
+`runtime-quality-policy.json` is the package's guard against a green-but-coarse reviewed model.
+
+It can express rules such as:
+
+- maximum files per reviewed inventory source
+- maximum files per obligation
+- maximum reviewed inventory sources per obligation
+
+Fidelity policy governs proof strength.
+Quality policy governs proof granularity.
 
 ## Recommended bootstrap strategy
 

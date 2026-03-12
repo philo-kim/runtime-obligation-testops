@@ -32,6 +32,10 @@ Framework-specific forks scale poorly because:
 
 Repo-local policy keeps the package core stable while allowing each codebase to express its own runtime signals.
 
+Use `runtime-quality-policy.json` alongside it when the reviewed model starts to get too broad.
+Discovery policy governs candidate quality.
+Quality policy governs reviewed-model granularity.
+
 ## Core fields
 
 ### `candidateReviewMode`

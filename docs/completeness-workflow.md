@@ -13,13 +13,14 @@ The right workflow is to reconcile them continuously.
 That workflow exists because completeness is not the same thing as consistency.
 A perfectly consistent reviewed model can still be incomplete if the runtime denominator was silently narrowed.
 
-## The five artifacts
+## The six artifacts
 
 - `runtime-discovery-policy.json`
 - `runtime-inventory.json`
 - `runtime-surfaces.json`
 - `runtime-control-plane.json`
 - `fidelity-policy.json`
+- `runtime-quality-policy.json`
 
 ## What each artifact does
 
@@ -63,6 +64,12 @@ The minimum strength of proof expected for each layer of the graph.
 
 Without fidelity policy, teams can overclaim runtime confidence using only low-realism proofs.
 
+### Quality policy
+
+The maximum coarseness the reviewed model is allowed to aggregate before it becomes a smell.
+
+Without quality policy, teams can keep a green control plane while still hiding gaps inside overly broad sources or obligations.
+
 ## Recommended operating loop
 
 1. run `rotops inventory scan`
@@ -71,8 +78,9 @@ Without fidelity policy, teams can overclaim runtime confidence using only low-r
 4. update `runtime-discovery-policy.json` for real suppressions or staged scope decisions
 5. update `runtime-inventory.json`
 6. derive or update `runtime-surfaces.json`
-7. update obligations and owner tests
-8. run `rotops validate`
+7. update `runtime-quality-policy.json` if the reviewed model got broader or was split
+8. update obligations and owner tests
+9. run `rotops validate`
 
 ## What `validate` now proves
 
@@ -81,6 +89,7 @@ Without fidelity policy, teams can overclaim runtime confidence using only low-r
 - declared obligations close the declared inventory
 - owner tests and annotations are traceable
 - discovered runtime files are not silently missing from the declared inventory
+- reviewed sources and obligations are not broader than the quality policy allows
 
 ## What still requires review
 

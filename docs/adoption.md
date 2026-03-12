@@ -111,7 +111,20 @@ For each surface, define obligations with:
 - fidelity
 - owner tests
 
-### 7. Connect the proof
+### 7. Add reviewed-model quality policy
+
+Define `runtime-quality-policy.json` once the reviewed model is large enough that coarse sources or obligations could hide gaps.
+
+Typical first rules:
+
+- maximum files per reviewed inventory source
+- maximum files per obligation
+- maximum reviewed inventory sources per obligation
+
+Start with warnings if needed.
+Promote high-risk surfaces to errors when the model is stable enough.
+
+### 8. Connect the proof
 
 Annotate owner tests:
 
@@ -121,7 +134,7 @@ Annotate owner tests:
 
 If a test owns no obligation, it should not be presented as runtime proof.
 
-### 8. Add the control gate to CI
+### 9. Add the control gate to CI
 
 Run:
 
@@ -163,7 +176,7 @@ It should also be able to reject this failure mode:
 
 ## Public repo checklist
 
-- commit the five runtime artifacts
+- commit the six runtime artifacts
 - commit `AGENTS.md`
 - fail CI on `rotops validate`
 - keep generated reports out of git

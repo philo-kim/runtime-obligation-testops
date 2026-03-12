@@ -19,6 +19,7 @@ AppPulse is included as a case study of the original failure mode, not as a toy 
 - `testops/runtime-surfaces.json`
 - `testops/runtime-control-plane.json`
 - `testops/fidelity-policy.json`
+- `testops/runtime-quality-policy.json`
 
 ## What the example demonstrates
 
@@ -29,6 +30,7 @@ AppPulse is included as a case study of the original failure mode, not as a toy 
 - runtime surfaces are project-specific, not fixed by the package
 - obligations own observable evidence and owner tests
 - fidelity is an explicit policy decision
+- reviewed-model granularity is governed explicitly instead of being left to taste
 
 ## Why this example matters
 

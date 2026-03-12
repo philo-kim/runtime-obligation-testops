@@ -1,0 +1,42 @@
+{
+  "$schema": "./runtime-quality-policy.schema.json",
+  "version": "1.0.0",
+  "principle": "runtime-obligation-first",
+  "defaultInventorySourceRule": {
+    "maxExpandedFiles": 3,
+    "level": "warning"
+  },
+  "defaultObligationRule": {
+    "maxExpandedFiles": 2,
+    "maxInventorySources": 1,
+    "level": "warning"
+  },
+  "surfacePolicies": [
+    {
+      "surfaceId": "auth-access",
+      "inventorySourceRule": {
+        "maxExpandedFiles": 2,
+        "level": "error"
+      },
+      "obligationRule": {
+        "maxExpandedFiles": 2,
+        "maxInventorySources": 1,
+        "level": "error"
+      }
+    },
+    {
+      "surfaceId": "workflow-orchestration",
+      "inventorySourceRule": {
+        "maxExpandedFiles": 2,
+        "level": "warning"
+      },
+      "obligationRule": {
+        "maxExpandedFiles": 2,
+        "maxInventorySources": 1,
+        "level": "warning"
+      }
+    }
+  ],
+  "inventorySourcePolicies": [],
+  "obligationPolicies": []
+}

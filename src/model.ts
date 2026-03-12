@@ -5,6 +5,7 @@ import {
   DEFAULT_DISCOVERY_POLICY_PATH,
   DEFAULT_FIDELITY_POLICY_PATH,
   DEFAULT_INVENTORY_PATH,
+  DEFAULT_QUALITY_POLICY_PATH,
   DEFAULT_SURFACES_PATH,
 } from "./constants.js";
 import type {
@@ -13,6 +14,7 @@ import type {
   ProjectModel,
   RuntimeControlPlane,
   RuntimeInventory,
+  RuntimeQualityPolicy,
   RuntimeSurfaceCatalog,
 } from "./types.js";
 
@@ -21,6 +23,7 @@ export interface ProjectPathOptions {
   inventoryPath?: string;
   surfaceCatalogPath?: string;
   fidelityPolicyPath?: string;
+  qualityPolicyPath?: string;
   discoveryPolicyPath?: string;
 }
 
@@ -29,6 +32,7 @@ export interface ResolvedProjectPaths {
   inventoryPath: string;
   surfaceCatalogPath: string;
   fidelityPolicyPath: string;
+  qualityPolicyPath: string;
   discoveryPolicyPath: string;
 }
 
@@ -61,6 +65,10 @@ export function resolveProjectPaths(
       repoRoot,
       options.fidelityPolicyPath ?? DEFAULT_FIDELITY_POLICY_PATH,
     ),
+    qualityPolicyPath: resolvePath(
+      repoRoot,
+      options.qualityPolicyPath ?? DEFAULT_QUALITY_POLICY_PATH,
+    ),
     discoveryPolicyPath: resolvePath(
       repoRoot,
       options.discoveryPolicyPath ?? DEFAULT_DISCOVERY_POLICY_PATH,
@@ -84,6 +92,9 @@ export function loadProjectModel(
   const fidelityPolicy = existsSync(paths.fidelityPolicyPath)
     ? readJsonFile<FidelityPolicy>(paths.fidelityPolicyPath)
     : undefined;
+  const qualityPolicy = existsSync(paths.qualityPolicyPath)
+    ? readJsonFile<RuntimeQualityPolicy>(paths.qualityPolicyPath)
+    : undefined;
   const discoveryPolicy = existsSync(paths.discoveryPolicyPath)
     ? readJsonFile<RuntimeDiscoveryPolicy>(paths.discoveryPolicyPath)
     : undefined;
@@ -93,6 +104,7 @@ export function loadProjectModel(
     inventory,
     surfaceCatalog,
     fidelityPolicy,
+    qualityPolicy,
     discoveryPolicy,
   };
 }

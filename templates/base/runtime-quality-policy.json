@@ -1,0 +1,17 @@
+{
+  "$schema": "./runtime-quality-policy.schema.json",
+  "version": "1.0.0",
+  "principle": "runtime-obligation-first",
+  "defaultInventorySourceRule": {
+    "maxExpandedFiles": 8,
+    "level": "warning"
+  },
+  "defaultObligationRule": {
+    "maxExpandedFiles": 6,
+    "maxInventorySources": 3,
+    "level": "warning"
+  },
+  "surfacePolicies": [],
+  "inventorySourcePolicies": [],
+  "obligationPolicies": []
+}

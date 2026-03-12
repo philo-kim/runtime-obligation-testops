@@ -105,6 +105,42 @@ export interface FidelityPolicy {
   obligationPolicies?: ObligationFidelityPolicy[];
 }
 
+export interface InventorySourceQualityRule {
+  maxExpandedFiles?: number;
+  level?: "error" | "warning";
+}
+
+export interface ObligationQualityRule {
+  maxExpandedFiles?: number;
+  maxInventorySources?: number;
+  level?: "error" | "warning";
+}
+
+export interface SurfaceQualityPolicy {
+  surfaceId: string;
+  inventorySourceRule?: InventorySourceQualityRule;
+  obligationRule?: ObligationQualityRule;
+}
+
+export interface InventorySourceQualityPolicy extends InventorySourceQualityRule {
+  inventorySourceId: string;
+}
+
+export interface ObligationQualityPolicy extends ObligationQualityRule {
+  obligationId: string;
+}
+
+export interface RuntimeQualityPolicy {
+  $schema?: string;
+  version: string;
+  principle: string;
+  defaultInventorySourceRule?: InventorySourceQualityRule;
+  defaultObligationRule?: ObligationQualityRule;
+  surfacePolicies?: SurfaceQualityPolicy[];
+  inventorySourcePolicies?: InventorySourceQualityPolicy[];
+  obligationPolicies?: ObligationQualityPolicy[];
+}
+
 export interface RuntimeDiscoverySuppression {
   filePatterns: string[];
   reason: string;
@@ -139,6 +175,7 @@ export interface ProjectModel {
   inventory?: RuntimeInventory;
   surfaceCatalog?: RuntimeSurfaceCatalog;
   fidelityPolicy?: FidelityPolicy;
+  qualityPolicy?: RuntimeQualityPolicy;
   discoveryPolicy?: RuntimeDiscoveryPolicy;
 }
 
@@ -173,6 +210,7 @@ export interface ValidationOptions {
   inventory?: RuntimeInventory;
   surfaceCatalog?: RuntimeSurfaceCatalog;
   fidelityPolicy?: FidelityPolicy;
+  qualityPolicy?: RuntimeQualityPolicy;
   discoveryPolicy?: RuntimeDiscoveryPolicy;
   discoveredInventory?: RuntimeInventory;
 }
@@ -218,6 +256,7 @@ export interface ArtifactPathMap {
   inventoryPath: string;
   surfaceCatalogPath: string;
   fidelityPolicyPath: string;
+  qualityPolicyPath: string;
   discoveryPolicyPath: string;
 }
 

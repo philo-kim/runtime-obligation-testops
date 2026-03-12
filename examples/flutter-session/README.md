@@ -20,6 +20,7 @@ The point is to demonstrate how a team can start with one critical runtime slice
 - `testops/runtime-surfaces.json`
 - `testops/runtime-control-plane.json`
 - `testops/fidelity-policy.json`
+- `testops/runtime-quality-policy.json`
 
 ## Why this example exists
 

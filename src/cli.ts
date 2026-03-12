@@ -7,6 +7,7 @@ import {
   DEFAULT_DISCOVERY_POLICY_PATH,
   DEFAULT_FIDELITY_POLICY_PATH,
   DEFAULT_INVENTORY_PATH,
+  DEFAULT_QUALITY_POLICY_PATH,
   DEFAULT_REPORT_JSON_PATH,
   DEFAULT_REPORT_MD_PATH,
   DEFAULT_REVIEW_JSON_PATH,
@@ -122,22 +123,22 @@ function printHelp(): void {
   console.log("  rotops inventory scan [--root path] [--policy path] [--out path]");
   console.log("  rotops surfaces derive [--root path] [--inventory path] [--out path]");
   console.log(
-    "  rotops review [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--discovery-policy path] [--root path] [--out-json path] [--out-md path]",
+    "  rotops review [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--quality path] [--discovery-policy path] [--root path] [--out-json path] [--out-md path]",
   );
   console.log(
-    "  rotops validate [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--discovery-policy path] [--root path] [--allow-missing-annotations]",
+    "  rotops validate [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--quality path] [--discovery-policy path] [--root path] [--allow-missing-annotations]",
   );
   console.log(
-    "  rotops report [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--discovery-policy path] [--root path] [--allow-missing-annotations]",
+    "  rotops report [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--quality path] [--discovery-policy path] [--root path] [--allow-missing-annotations]",
   );
   console.log(
-    "  rotops impact [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--discovery-policy path] [--root path] --changed path [--changed path]",
+    "  rotops impact [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--quality path] [--discovery-policy path] [--root path] --changed path [--changed path]",
   );
   console.log(
     "  rotops export vitest-workspace [--config path] [--root path] [--out path] [--alias @=./src]",
   );
   console.log(
-    "  rotops export agent-contract [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--discovery-policy path] [--root path] [--out path] [--review-command cmd] [--impact-command cmd] [--validate-command cmd]",
+    "  rotops export agent-contract [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--quality path] [--discovery-policy path] [--root path] [--out path] [--review-command cmd] [--impact-command cmd] [--validate-command cmd]",
   );
 }
 
@@ -197,6 +198,7 @@ function validateAndMaybeReport(parsed: ParsedArgs, reportOnly: boolean): void {
     inventoryPath: getFlag(parsed, "inventory", DEFAULT_INVENTORY_PATH),
     surfaceCatalogPath: getFlag(parsed, "surfaces", DEFAULT_SURFACES_PATH),
     fidelityPolicyPath: getFlag(parsed, "fidelity", DEFAULT_FIDELITY_POLICY_PATH),
+    qualityPolicyPath: getFlag(parsed, "quality", DEFAULT_QUALITY_POLICY_PATH),
     discoveryPolicyPath: getFlag(parsed, "discovery-policy", DEFAULT_DISCOVERY_POLICY_PATH),
   });
   const summary = validateControlPlane(model.controlPlane, repoRoot, {
@@ -204,6 +206,7 @@ function validateAndMaybeReport(parsed: ParsedArgs, reportOnly: boolean): void {
     inventory: model.inventory,
     surfaceCatalog: model.surfaceCatalog,
     fidelityPolicy: model.fidelityPolicy,
+    qualityPolicy: model.qualityPolicy,
     discoveryPolicy: model.discoveryPolicy,
   });
 
@@ -243,6 +246,7 @@ function commandImpact(parsed: ParsedArgs): void {
     inventoryPath: getFlag(parsed, "inventory", DEFAULT_INVENTORY_PATH),
     surfaceCatalogPath: getFlag(parsed, "surfaces", DEFAULT_SURFACES_PATH),
     fidelityPolicyPath: getFlag(parsed, "fidelity", DEFAULT_FIDELITY_POLICY_PATH),
+    qualityPolicyPath: getFlag(parsed, "quality", DEFAULT_QUALITY_POLICY_PATH),
     discoveryPolicyPath: getFlag(parsed, "discovery-policy", DEFAULT_DISCOVERY_POLICY_PATH),
   });
 
@@ -257,6 +261,7 @@ function commandReview(parsed: ParsedArgs): void {
     inventoryPath: getFlag(parsed, "inventory", DEFAULT_INVENTORY_PATH),
     surfaceCatalogPath: getFlag(parsed, "surfaces", DEFAULT_SURFACES_PATH),
     fidelityPolicyPath: getFlag(parsed, "fidelity", DEFAULT_FIDELITY_POLICY_PATH),
+    qualityPolicyPath: getFlag(parsed, "quality", DEFAULT_QUALITY_POLICY_PATH),
     discoveryPolicyPath: getFlag(parsed, "discovery-policy", DEFAULT_DISCOVERY_POLICY_PATH),
   });
   const backlog = generateReviewBacklog(repoRoot, model);
@@ -329,6 +334,7 @@ function commandExportAgentContract(parsed: ParsedArgs): void {
     inventoryPath: getFlag(parsed, "inventory", DEFAULT_INVENTORY_PATH),
     surfaceCatalogPath: getFlag(parsed, "surfaces", DEFAULT_SURFACES_PATH),
     fidelityPolicyPath: getFlag(parsed, "fidelity", DEFAULT_FIDELITY_POLICY_PATH),
+    qualityPolicyPath: getFlag(parsed, "quality", DEFAULT_QUALITY_POLICY_PATH),
     discoveryPolicyPath: getFlag(parsed, "discovery-policy", DEFAULT_DISCOVERY_POLICY_PATH),
   });
   const controlPlane = loadControlPlane(repoRoot, projectPaths.controlPlanePath);

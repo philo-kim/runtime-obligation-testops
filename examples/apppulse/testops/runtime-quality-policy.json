@@ -1,0 +1,46 @@
+{
+  "$schema": "./runtime-quality-policy.schema.json",
+  "version": "1.0.0",
+  "principle": "runtime-obligation-first",
+  "defaultInventorySourceRule": {
+    "maxExpandedFiles": 4,
+    "level": "warning"
+  },
+  "defaultObligationRule": {
+    "maxExpandedFiles": 4,
+    "maxInventorySources": 2,
+    "level": "warning"
+  },
+  "surfacePolicies": [
+    {
+      "surfaceId": "client-state",
+      "inventorySourceRule": {
+        "maxExpandedFiles": 2,
+        "level": "error"
+      },
+      "obligationRule": {
+        "maxExpandedFiles": 2,
+        "maxInventorySources": 2,
+        "level": "error"
+      }
+    },
+    {
+      "surfaceId": "persistence-semantics",
+      "obligationRule": {
+        "maxExpandedFiles": 2,
+        "maxInventorySources": 1,
+        "level": "error"
+      }
+    },
+    {
+      "surfaceId": "background-execution",
+      "obligationRule": {
+        "maxExpandedFiles": 3,
+        "maxInventorySources": 2,
+        "level": "error"
+      }
+    }
+  ],
+  "inventorySourcePolicies": [],
+  "obligationPolicies": []
+}

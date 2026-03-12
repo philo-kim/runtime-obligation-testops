@@ -8,14 +8,18 @@ import {
   validateDiscoveryPolicyShape,
   validateFidelityPolicyShape,
   validateInventoryShape,
+  validateQualityPolicyShape,
   validateSurfaceCatalogShape,
 } from "./schema.js";
 import type {
+  InventorySourceQualityRule,
   Obligation,
+  ObligationQualityRule,
   RuntimeControlPlane,
   RuntimeDiscoveryPolicy,
   RuntimeInventory,
   RuntimeInventorySource,
+  RuntimeQualityPolicy,
   RuntimeSurfaceCatalog,
   RuntimeSurfaceDefinition,
   Surface,
@@ -101,6 +105,122 @@ function validateDiscoveryPolicySemantics(
       });
     }
   }
+}
+
+function validateQualityPolicySemantics(
+  issues: ValidationIssue[],
+  controlPlane: RuntimeControlPlane,
+  inventory: RuntimeInventory | undefined,
+  qualityPolicy?: RuntimeQualityPolicy,
+): void {
+  if (!qualityPolicy) {
+    return;
+  }
+
+  const knownSurfaceIds = new Set(controlPlane.surfaces.map((surface) => surface.id));
+  const knownInventorySourceIds = new Set(inventory?.sources.map((source) => source.id) ?? []);
+  const knownObligationIds = new Set(controlPlane.obligations.map((obligation) => obligation.id));
+
+  const seenSurfaceIds = new Set<string>();
+  for (const surfacePolicy of qualityPolicy.surfacePolicies ?? []) {
+    if (!knownSurfaceIds.has(surfacePolicy.surfaceId)) {
+      issues.push({
+        level: "error",
+        message: `Quality policy references unknown surface ${surfacePolicy.surfaceId}`,
+      });
+    }
+    if (seenSurfaceIds.has(surfacePolicy.surfaceId)) {
+      issues.push({
+        level: "error",
+        message: `Quality policy defines multiple surface policies for ${surfacePolicy.surfaceId}`,
+      });
+    }
+    seenSurfaceIds.add(surfacePolicy.surfaceId);
+
+    if (!surfacePolicy.inventorySourceRule && !surfacePolicy.obligationRule) {
+      issues.push({
+        level: "warning",
+        message: `Quality policy surface ${surfacePolicy.surfaceId} does not define any quality rules`,
+      });
+    }
+  }
+
+  const seenInventorySourceIds = new Set<string>();
+  for (const sourcePolicy of qualityPolicy.inventorySourcePolicies ?? []) {
+    if (!knownInventorySourceIds.has(sourcePolicy.inventorySourceId)) {
+      issues.push({
+        level: "error",
+        message: `Quality policy references unknown inventory source ${sourcePolicy.inventorySourceId}`,
+      });
+    }
+    if (seenInventorySourceIds.has(sourcePolicy.inventorySourceId)) {
+      issues.push({
+        level: "error",
+        message: `Quality policy defines multiple inventory-source policies for ${sourcePolicy.inventorySourceId}`,
+      });
+    }
+    seenInventorySourceIds.add(sourcePolicy.inventorySourceId);
+  }
+
+  const seenObligationIds = new Set<string>();
+  for (const obligationPolicy of qualityPolicy.obligationPolicies ?? []) {
+    if (!knownObligationIds.has(obligationPolicy.obligationId)) {
+      issues.push({
+        level: "error",
+        message: `Quality policy references unknown obligation ${obligationPolicy.obligationId}`,
+      });
+    }
+    if (seenObligationIds.has(obligationPolicy.obligationId)) {
+      issues.push({
+        level: "error",
+        message: `Quality policy defines multiple obligation policies for ${obligationPolicy.obligationId}`,
+      });
+    }
+    seenObligationIds.add(obligationPolicy.obligationId);
+  }
+}
+
+function mergeDefined<T extends object>(...rules: Array<T | undefined>): T | undefined {
+  const merged = Object.assign({}, ...rules.filter(Boolean));
+  return Object.keys(merged).length > 0 ? (merged as T) : undefined;
+}
+
+function resolveInventorySourceQualityRule(
+  qualityPolicy: RuntimeQualityPolicy | undefined,
+  surfaceId: string | undefined,
+  inventorySourceId: string,
+): InventorySourceQualityRule | undefined {
+  const surfaceRule = qualityPolicy?.surfacePolicies?.find(
+    (policy) => policy.surfaceId === surfaceId,
+  )?.inventorySourceRule;
+  const sourceRule = qualityPolicy?.inventorySourcePolicies?.find(
+    (policy) => policy.inventorySourceId === inventorySourceId,
+  );
+
+  return mergeDefined(
+    qualityPolicy?.defaultInventorySourceRule,
+    surfaceRule,
+    sourceRule,
+  );
+}
+
+function resolveObligationQualityRule(
+  qualityPolicy: RuntimeQualityPolicy | undefined,
+  surfaceId: string,
+  obligationId: string,
+): ObligationQualityRule | undefined {
+  const surfaceRule = qualityPolicy?.surfacePolicies?.find(
+    (policy) => policy.surfaceId === surfaceId,
+  )?.obligationRule;
+  const obligationRule = qualityPolicy?.obligationPolicies?.find(
+    (policy) => policy.obligationId === obligationId,
+  );
+
+  return mergeDefined(
+    qualityPolicy?.defaultObligationRule,
+    surfaceRule,
+    obligationRule,
+  );
 }
 
 function mapFilesById<T extends { id: string; sourcePatterns: string[] }>(
@@ -252,6 +372,7 @@ export function validateControlPlane(
   const inventory = options.inventory;
   const surfaceCatalog = options.surfaceCatalog;
   const fidelityPolicy = options.fidelityPolicy;
+  const qualityPolicy = options.qualityPolicy;
   const discoveryPolicy = options.discoveryPolicy;
   const discoveredInventoryCandidate =
     options.discoveredInventory ??
@@ -281,6 +402,13 @@ export function validateControlPlane(
       issues,
       "Fidelity policy schema violation",
       validateFidelityPolicyShape(fidelityPolicy),
+    );
+  }
+  if (qualityPolicy) {
+    pushSchemaIssues(
+      issues,
+      "Quality policy schema violation",
+      validateQualityPolicyShape(qualityPolicy),
     );
   }
   if (discoveryPolicy) {
@@ -316,6 +444,12 @@ export function validateControlPlane(
     "Fidelity policy",
     controlPlane.principle,
     fidelityPolicy?.principle,
+  );
+  ensureMatchingPrinciple(
+    issues,
+    "Quality policy",
+    controlPlane.principle,
+    qualityPolicy?.principle,
   );
   ensureMatchingPrinciple(
     issues,
@@ -355,6 +489,8 @@ export function validateControlPlane(
     "discovered inventory source id",
     discoveredInventory?.sources.map((source) => source.id) ?? [],
   );
+
+  validateQualityPolicySemantics(issues, controlPlane, inventory, qualityPolicy);
 
   if (controlPlane.surfaces.length === 0) {
     issues.push({
@@ -701,6 +837,56 @@ export function validateControlPlane(
           });
         }
       }
+
+      const inventorySourceQualityRule = resolveInventorySourceQualityRule(
+        qualityPolicy,
+        surfaceId,
+        source.id,
+      );
+      const resolvedFiles = inventoryFilesById.get(source.id)?.length ?? 0;
+      if (
+        inventorySourceQualityRule?.maxExpandedFiles !== undefined &&
+        resolvedFiles > inventorySourceQualityRule.maxExpandedFiles
+      ) {
+        issues.push({
+          level: inventorySourceQualityRule.level ?? "error",
+          message: `Inventory source ${source.id} resolves ${resolvedFiles} files, above the allowed maximum ${inventorySourceQualityRule.maxExpandedFiles}`,
+        });
+      }
+    }
+  }
+
+  for (const obligation of controlPlane.obligations) {
+    const obligationQualityRule = resolveObligationQualityRule(
+      qualityPolicy,
+      obligation.surface,
+      obligation.id,
+    );
+
+    if (!obligationQualityRule) {
+      continue;
+    }
+
+    const resolvedFiles = obligationSources.get(obligation.id)?.length ?? 0;
+    if (
+      obligationQualityRule.maxExpandedFiles !== undefined &&
+      resolvedFiles > obligationQualityRule.maxExpandedFiles
+    ) {
+      issues.push({
+        level: obligationQualityRule.level ?? "error",
+        message: `Obligation ${obligation.id} resolves ${resolvedFiles} files, above the allowed maximum ${obligationQualityRule.maxExpandedFiles}`,
+      });
+    }
+
+    const tracedInventorySources = obligationInventorySources.get(obligation.id)?.length ?? 0;
+    if (
+      obligationQualityRule.maxInventorySources !== undefined &&
+      tracedInventorySources > obligationQualityRule.maxInventorySources
+    ) {
+      issues.push({
+        level: obligationQualityRule.level ?? "error",
+        message: `Obligation ${obligation.id} spans ${tracedInventorySources} inventory sources, above the allowed maximum ${obligationQualityRule.maxInventorySources}`,
+      });
     }
   }
 

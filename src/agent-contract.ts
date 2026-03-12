@@ -10,6 +10,7 @@ function relativeArtifactPaths(
     inventoryPath: path.relative(repoRoot, artifactPaths.inventoryPath) || ".",
     surfaceCatalogPath: path.relative(repoRoot, artifactPaths.surfaceCatalogPath) || ".",
     fidelityPolicyPath: path.relative(repoRoot, artifactPaths.fidelityPolicyPath) || ".",
+    qualityPolicyPath: path.relative(repoRoot, artifactPaths.qualityPolicyPath) || ".",
     discoveryPolicyPath: path.relative(repoRoot, artifactPaths.discoveryPolicyPath) || ".",
   };
 }
@@ -55,6 +56,7 @@ export function buildRuntimeAgentContract(
       artifactPaths.surfaceCatalogPath,
       artifactPaths.controlPlanePath,
       artifactPaths.fidelityPolicyPath,
+      artifactPaths.qualityPolicyPath,
       "AGENTS.md",
     ],
     mandatoryLoop: [
@@ -62,6 +64,7 @@ export function buildRuntimeAgentContract(
       "run impact analysis or equivalent changed-file mapping",
       "compare discovered candidates against the reviewed model",
       "update repo-local discovery policy if the scanner is noisy or blind for this slice",
+      "check whether reviewed-model granularity still satisfies runtime-quality-policy",
       "update inventory, surfaces, obligations, evidence, and owner tests as needed",
       "rerun validate before considering the change complete",
     ],

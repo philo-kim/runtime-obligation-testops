@@ -15,6 +15,7 @@ import {
 import type {
   RuntimeDiscoveryPolicy,
   FidelityPolicy,
+  RuntimeQualityPolicy,
   RuntimeControlPlane,
   RuntimeInventory,
 } from "../src/index.js";
@@ -111,6 +112,25 @@ function makeControlPlane(): RuntimeControlPlane {
   };
 }
 
+function makeQualityPolicy(): RuntimeQualityPolicy {
+  return {
+    version: "1.0.0",
+    principle: "runtime-obligation-first",
+    defaultInventorySourceRule: {
+      maxExpandedFiles: 2,
+      level: "error",
+    },
+    defaultObligationRule: {
+      maxExpandedFiles: 2,
+      maxInventorySources: 1,
+      level: "error",
+    },
+    surfacePolicies: [],
+    inventorySourcePolicies: [],
+    obligationPolicies: [],
+  };
+}
+
 afterEach(() => {
   while (tempDirs.length > 0) {
     rmSync(tempDirs.pop() as string, { recursive: true, force: true });
@@ -185,6 +205,85 @@ describe("validateControlPlane", () => {
     );
     expect(messages).toContain(
       "Obligation request-entry.success has fidelity simulated, below required minimum real-dependency",
+    );
+  });
+
+  it("reports reviewed-model quality regressions when sources or obligations are too coarse", () => {
+    const root = makeTempDir();
+    writeProjectFile(root, "src/pages/alerts.tsx", "export const alerts = true;\n");
+    writeProjectFile(root, "src/pages/reviews.tsx", "export const reviews = true;\n");
+    writeProjectFile(root, "src/pages/metadata.tsx", "export const metadata = true;\n");
+    writeProjectFile(
+      root,
+      "test/pages.test.ts",
+      "// runtime-obligations: client.pages\nexport const testFile = true;\n",
+    );
+
+    const inventory: RuntimeInventory = {
+      version: "1.0.0",
+      principle: "runtime-obligation-first",
+      sourceKinds: ["ui-state"],
+      sources: [
+        {
+          id: "client-pages",
+          description: "Multiple client pages",
+          kind: "ui-state",
+          sourcePatterns: ["src/pages/*.tsx"],
+          events: ["A user enters a dashboard page."],
+          expectedEvidence: ["state_transition"],
+          expectedOutcomeClasses: ["success"],
+          surfaceHint: "client-state",
+          minimumFidelity: "simulated",
+        },
+      ],
+    };
+
+    const controlPlane: RuntimeControlPlane = {
+      version: "1.0.0",
+      principle: "runtime-obligation-first",
+      evidenceKinds: ["state_transition"],
+      fidelityLevels: [
+        "isolated",
+        "simulated",
+        "contract",
+        "real-dependency",
+        "full-system",
+      ],
+      surfaces: [
+        {
+          id: "client-state",
+          description: "Client state transitions",
+          sourcePatterns: ["src/pages/*.tsx"],
+          testPatterns: ["test/pages.test.ts"],
+        },
+      ],
+      obligations: [
+        {
+          id: "client.pages",
+          surface: "client-state",
+          sourcePatterns: ["src/pages/*.tsx"],
+          event: "A user enters a dashboard page.",
+          outcomes: ["The page renders successfully."],
+          outcomeClasses: ["success"],
+          evidence: ["state_transition"],
+          fidelity: "simulated",
+          ownerTests: ["test/pages.test.ts"],
+        },
+      ],
+    };
+
+    const summary = validateControlPlane(controlPlane, root, {
+      inventory,
+      surfaceCatalog: deriveSurfaceCatalog(inventory),
+      qualityPolicy: makeQualityPolicy(),
+    });
+    const messages = summary.issues.map((issue) => issue.message);
+
+    expect(messages).toContain(
+      "Inventory source client-pages resolves 3 files, above the allowed maximum 2",
+    );
+    expect(messages).toContain(
+      "Obligation client.pages resolves 3 files, above the allowed maximum 2",
     );
   });
 
@@ -558,11 +657,13 @@ describe("buildRuntimeAgentContract", () => {
         inventoryPath: path.join(root, "testops", "runtime-inventory.json"),
         surfaceCatalogPath: path.join(root, "testops", "runtime-surfaces.json"),
         fidelityPolicyPath: path.join(root, "testops", "fidelity-policy.json"),
+        qualityPolicyPath: path.join(root, "testops", "runtime-quality-policy.json"),
         discoveryPolicyPath: path.join(root, "testops", "runtime-discovery-policy.json"),
       },
     });
 
     expect(contract.readOrder[0]).toBe("testops/runtime-discovery-policy.json");
+    expect(contract.readOrder).toContain("testops/runtime-quality-policy.json");
     expect(contract.requiredCommands.map((command) => command.id)).toEqual([
       "review",
       "impact",
@@ -581,6 +682,7 @@ describe("buildRuntimeAgentContract", () => {
         inventoryPath: path.join(root, "testing", "runtime-inventory.json"),
         surfaceCatalogPath: path.join(root, "testing", "runtime-surfaces.json"),
         fidelityPolicyPath: path.join(root, "testing", "fidelity-policy.json"),
+        qualityPolicyPath: path.join(root, "testing", "runtime-quality-policy.json"),
         discoveryPolicyPath: path.join(root, "testing", "runtime-discovery-policy.json"),
       },
       commandOverrides: {
@@ -617,11 +719,13 @@ describe("initWorkspace", () => {
     expect(existsSync(path.join(root, "testops", "runtime-inventory.json"))).toBe(true);
     expect(existsSync(path.join(root, "testops", "runtime-surfaces.json"))).toBe(true);
     expect(existsSync(path.join(root, "testops", "fidelity-policy.json"))).toBe(true);
+    expect(existsSync(path.join(root, "testops", "runtime-quality-policy.json"))).toBe(true);
     expect(existsSync(path.join(root, "testops", "runtime-discovery-policy.json"))).toBe(true);
     expect(existsSync(path.join(root, "testops", "runtime-control-plane.schema.json"))).toBe(true);
     expect(existsSync(path.join(root, "testops", "runtime-inventory.schema.json"))).toBe(true);
     expect(existsSync(path.join(root, "testops", "runtime-surfaces.schema.json"))).toBe(true);
     expect(existsSync(path.join(root, "testops", "fidelity-policy.schema.json"))).toBe(true);
+    expect(existsSync(path.join(root, "testops", "runtime-quality-policy.schema.json"))).toBe(true);
     expect(existsSync(path.join(root, "testops", "runtime-discovery-policy.schema.json"))).toBe(true);
     expect(existsSync(path.join(root, ".github", "workflows", "testops-control.yml"))).toBe(true);
     expect(existsSync(path.join(root, "vitest.runtime.workspace.ts"))).toBe(true);

@@ -16,6 +16,7 @@ You hand-author:
 - `runtime-surfaces.json`
 - `runtime-control-plane.json`
 - `fidelity-policy.json`
+- `runtime-quality-policy.json`
 
 and use:
 
@@ -66,6 +67,7 @@ These parts tend to work across stacks first:
 - obligation ownership
 - annotation traceability
 - fidelity governance
+- reviewed-model quality governance
 - impact analysis
 
 ## What usually needs local shaping

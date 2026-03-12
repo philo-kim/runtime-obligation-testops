@@ -46,6 +46,10 @@ export function initWorkspace(
       destination: path.join(targetDir, "testops", "runtime-discovery-policy.json"),
     },
     {
+      source: templatePath("base", "runtime-quality-policy.json"),
+      destination: path.join(targetDir, "testops", "runtime-quality-policy.json"),
+    },
+    {
       source: schemaPath("runtime-control-plane.schema.json"),
       destination: path.join(targetDir, "testops", "runtime-control-plane.schema.json"),
     },
@@ -64,6 +68,10 @@ export function initWorkspace(
     {
       source: schemaPath("runtime-discovery-policy.schema.json"),
       destination: path.join(targetDir, "testops", "runtime-discovery-policy.schema.json"),
+    },
+    {
+      source: schemaPath("runtime-quality-policy.schema.json"),
+      destination: path.join(targetDir, "testops", "runtime-quality-policy.schema.json"),
     },
     {
       source: templatePath("github", "testops-control.yml"),

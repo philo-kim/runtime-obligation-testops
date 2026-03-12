@@ -8,6 +8,7 @@ import type {
   RuntimeDiscoveryPolicy,
   RuntimeControlPlane,
   RuntimeInventory,
+  RuntimeQualityPolicy,
   RuntimeSurfaceCatalog,
 } from "./types.js";
 
@@ -25,6 +26,7 @@ export type SchemaName =
   | "runtime-inventory"
   | "runtime-surfaces"
   | "fidelity-policy"
+  | "runtime-quality-policy"
   | "runtime-discovery-policy";
 
 function schemaPath(schemaName: SchemaName): string {
@@ -71,6 +73,10 @@ export function validateSurfaceCatalogShape(surfaceCatalog: RuntimeSurfaceCatalo
 
 export function validateFidelityPolicyShape(fidelityPolicy: FidelityPolicy): string[] {
   return validateShape(fidelityPolicy, "fidelity-policy");
+}
+
+export function validateQualityPolicyShape(qualityPolicy: RuntimeQualityPolicy): string[] {
+  return validateShape(qualityPolicy, "runtime-quality-policy");
 }
 
 export function validateDiscoveryPolicyShape(discoveryPolicy: RuntimeDiscoveryPolicy): string[] {

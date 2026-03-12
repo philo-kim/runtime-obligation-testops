@@ -1,15 +1,17 @@
 # Runtime Model
 
-The package manages runtime verification through five linked artifacts:
+The package manages runtime verification through six linked artifacts:
 
 - `runtime-discovery-policy.json`
 - `runtime-inventory.json`
 - `runtime-surfaces.json`
 - `runtime-control-plane.json`
 - `fidelity-policy.json`
+- `runtime-quality-policy.json`
 
 The discovery policy controls how candidate runtime sources are found and reviewed.
-The other four files form the reviewed runtime model.
+The next four files form the reviewed runtime model.
+The quality policy governs whether that reviewed model is too coarse to expose real gaps.
 
 Together they answer five different questions:
 
@@ -18,6 +20,7 @@ Together they answer five different questions:
 - how that denominator is partitioned into manageable surfaces
 - what obligations and evidence govern each surface
 - what proof strength is required
+- whether the reviewed model is still granular enough to expose missing proof
 
 ## Runtime source
 
@@ -127,6 +130,18 @@ The package does not force one universal set, but it forces each project to defi
 
 This matters because not all obligations should be satisfied with the same kind of proof.
 Some need real storage, real queues, or full-system execution.
+
+## Quality policy
+
+Quality policy governs reviewed-model granularity.
+
+Typical uses:
+
+- flag an inventory source that expands to too many files
+- flag an obligation that expands to too many files
+- flag an obligation that spans too many reviewed inventory sources
+
+This matters because a green control plane can still hide missing proof if the reviewed model is overly aggregated.
 
 ## Declared vs discovered
 
