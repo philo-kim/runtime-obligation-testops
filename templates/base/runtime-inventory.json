@@ -26,5 +26,20 @@
       "surfaceHint": "runtime-entry",
       "minimumFidelity": "simulated"
     }
+  ],
+  "behaviors": [
+    {
+      "id": "runtime-entry.example-behavior",
+      "sourceId": "runtime-entry",
+      "event": "Replace this with a reviewed runtime behavior for your project.",
+      "expectedEvidence": [
+        "response"
+      ],
+      "expectedOutcomeClasses": [
+        "success",
+        "failure"
+      ],
+      "minimumFidelity": "simulated"
+    }
   ]
 }

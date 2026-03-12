@@ -37,6 +37,12 @@
       "items": {
         "$ref": "#/$defs/source"
       }
+    },
+    "behaviors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/behavior"
+      }
     }
   },
   "$defs": {
@@ -98,6 +104,49 @@
         "surfaceHint": {
           "type": "string",
           "minLength": 1
+        },
+        "minimumFidelity": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "behavior": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "sourceId",
+        "event"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9.-]+$"
+        },
+        "sourceId": {
+          "type": "string",
+          "pattern": "^[a-z0-9.-]+$"
+        },
+        "event": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expectedEvidence": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "expectedOutcomeClasses": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
         },
         "minimumFidelity": {
           "type": "string",

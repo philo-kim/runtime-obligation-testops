@@ -46,10 +46,16 @@
         "$ref": "#/$defs/inventorySourcePolicy"
       }
     },
+    "behaviorPolicies": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/behaviorPolicy"
+      }
+    },
     "obligationPolicies": {
       "type": "array",
       "items": {
-        "$ref": "#/$defs/obligationPolicy"
+        "$ref": "#/$defs/behaviorPolicy"
       }
     }
   },
@@ -90,15 +96,15 @@
         }
       }
     },
-    "obligationPolicy": {
+    "behaviorPolicy": {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "obligationId",
+        "behaviorId",
         "minimumFidelity"
       ],
       "properties": {
-        "obligationId": {
+        "behaviorId": {
           "type": "string",
           "pattern": "^[a-z0-9.-]+$"
         },
@@ -107,6 +113,9 @@
           "minLength": 1
         }
       }
+    },
+    "obligationPolicy": {
+      "$ref": "#/$defs/behaviorPolicy"
     }
   }
 }

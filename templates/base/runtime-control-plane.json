@@ -36,12 +36,15 @@
       }
     }
   ],
-  "obligations": [
+  "behaviors": [
     {
-      "id": "runtime-entry.example-obligation",
+      "id": "runtime-entry.example-behavior",
       "surface": "runtime-entry",
       "sourcePatterns": [
         "src/**/*.ts"
+      ],
+      "inventoryBehaviorIds": [
+        "runtime-entry.example-behavior"
       ],
       "event": "Replace this with a real external runtime event.",
       "outcomes": [

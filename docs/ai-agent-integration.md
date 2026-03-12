@@ -1,9 +1,9 @@
 # AI Agent Integration
 
-An AI agent should treat this system as executable runtime governance, not as optional documentation.
+An AI agent should treat this system as executable runtime behavior completeness, not as optional documentation.
 
 The agent's job is not to maximize coverage quickly.
-The agent's job is to keep the runtime denominator, obligations, evidence, and owner tests aligned after each change.
+The agent's job is to keep the runtime denominator, reviewed behaviors, implemented behavior units, evidence, and owner tests aligned after each change.
 
 This is not a manual-modeling workflow where a human has to author everything by hand.
 The intended operating model is:
@@ -39,8 +39,8 @@ For every runtime change:
 6. check whether the reviewed model is still granular enough under the quality policy
 7. determine whether the reviewed denominator changed
 8. determine which surface owns the change
-9. update or add obligations
-10. update owner tests and `runtime-obligations` annotations
+9. update or add reviewed behaviors or implemented behavior units
+10. update owner tests and `runtime-behaviors` annotations
 11. rerun `rotops validate`
 
 If discovery finds a candidate the reviewed model does not account for, the agent must not hide it by editing tests alone.
@@ -53,16 +53,16 @@ The agent must either:
 ## What agents must never do
 
 - treat line coverage as the main sufficiency signal
-- add tests that own no obligation
+- add tests that own no reviewed behavior
 - edit inventory to hide discovery drift
-- change runtime behavior without updating obligations
+- change runtime behavior without updating reviewed behaviors or behavior units
 - claim a proof is complete when the evidence is not externally observable
 
 ## The core review question
 
 An agent should always be able to answer:
 
-`for the changed runtime source, what did discovery find, what does the reviewed model accept, which obligations changed, what evidence proves them, and which tests own that proof?`
+`for the changed runtime source, what did discovery find, what does the reviewed model accept, which reviewed behaviors changed, which behavior units implement them, what evidence proves them, and which tests own that proof?`
 
 ## Why this matters for agents
 
@@ -85,7 +85,7 @@ It means the repo still needs semantic approval on one of these questions:
 
 - should this discovered candidate become part of the managed denominator
 - is this suppression legitimate
-- is this obligation too coarse
+- is this behavior unit too coarse
 - is this evidence sufficient
 - is this fidelity level strong enough
 

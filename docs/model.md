@@ -18,7 +18,7 @@ Together they answer five different questions:
 - what the scanner is allowed to propose
 - what the team accepts as the runtime denominator
 - how that denominator is partitioned into manageable surfaces
-- what obligations and evidence govern each surface
+- what reviewed behaviors and evidence govern each surface
 - what proof strength is required
 - whether the reviewed model is still granular enough to expose missing proof
 
@@ -63,7 +63,7 @@ Typical uses:
 - keep the discovered candidate set stable in CI
 
 This file exists because discovery is useful but imperfect.
-It lets the team control heuristics without mutating the reviewed denominator just to get a green build.
+It lets the team control heuristics without mutating the reviewed denominator just to get a clean-looking build.
 
 That makes discovery policy the main portability layer of the package.
 The core model stays universal while each repo teaches discovery how its runtime is actually expressed.
@@ -88,6 +88,21 @@ Examples in different projects might include:
 The point is not to force a universal taxonomy.
 The point is to create an operable partition over the reviewed denominator.
 
+## Runtime behavior denominator
+
+The reviewed denominator can now be expressed explicitly in `runtime-inventory.json` through `behaviors`.
+
+Each reviewed runtime behavior records:
+
+- which inventory source it belongs to
+- the triggering event
+- the expected evidence
+- the expected outcome classes
+- the minimum fidelity when that behavior needs stronger proof
+
+If `inventory.behaviors` is absent, the package falls back to synthesizing reviewed behaviors from `source.events`.
+Explicit `inventory.behaviors` is preferred because it lets the denominator be finer than the source list.
+
 ## Runtime behavior unit
 
 A runtime behavior unit is the minimum managed unit of automated verification.
@@ -103,13 +118,13 @@ Each behavior unit records:
 - the owner tests
 
 Behavior units close the reviewed inventory with concrete proof.
-They are the place where runtime behavior stops being informal and becomes test-governed.
+They are the place where reviewed runtime behavior stops being informal and becomes test-governed.
 
 The control-plane file still accepts the legacy key name `obligations`, but the preferred model is `behaviors`.
 
 ## Fidelity policy
 
-Fidelity policy defines the minimum proof strength expected for a surface, source, or obligation.
+Fidelity policy defines the minimum proof strength expected for a surface, source, reviewed behavior, or behavior unit.
 
 This lets teams distinguish:
 
@@ -120,7 +135,7 @@ This lets teams distinguish:
 
 ## Fidelity
 
-Fidelity is explicit because different obligations need different proof strengths.
+Fidelity is explicit because different behavior units need different proof strengths.
 
 Suggested levels:
 
@@ -132,7 +147,7 @@ Suggested levels:
 
 The package does not force one universal set, but it forces each project to define and use one consistently.
 
-This matters because not all obligations should be satisfied with the same kind of proof.
+This matters because not all behavior units should be satisfied with the same kind of proof.
 Some need real storage, real queues, or full-system execution.
 
 ## Quality policy
@@ -142,10 +157,11 @@ Quality policy governs reviewed-model granularity.
 Typical uses:
 
 - flag an inventory source that expands to too many files
-- flag an obligation that expands to too many files
-- flag an obligation that spans too many reviewed inventory sources
+- flag a behavior unit that expands to too many files
+- flag a behavior unit that spans too many reviewed inventory sources
+- flag a behavior unit that spans too many reviewed inventory behaviors
 
-This matters because a green control plane can still hide missing proof if the reviewed model is overly aggregated.
+This matters because a clean control plane can still hide missing proof if the reviewed model is overly aggregated.
 
 ## Declared vs discovered
 

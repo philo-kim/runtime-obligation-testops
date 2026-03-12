@@ -52,6 +52,16 @@ function makeInventory(): RuntimeInventory {
         minimumFidelity: "simulated",
       },
     ],
+    behaviors: [
+      {
+        id: "request-entry.behavior",
+        sourceId: "request-entry",
+        event: "A request enters the system.",
+        expectedEvidence: ["response"],
+        expectedOutcomeClasses: ["success"],
+        minimumFidelity: "simulated",
+      },
+    ],
   };
 }
 
@@ -101,6 +111,8 @@ function makeControlPlane(): RuntimeControlPlane {
         id: "request-entry.success",
         surface: "request-boundary",
         sourcePatterns: ["src/entry.ts"],
+        inventorySourceIds: ["request-entry"],
+        inventoryBehaviorIds: ["request-entry.behavior"],
         event: "A request enters the system.",
         outcomes: ["A response is produced successfully."],
         outcomeClasses: ["success"],
@@ -120,14 +132,15 @@ function makeQualityPolicy(): RuntimeQualityPolicy {
       maxExpandedFiles: 2,
       level: "error",
     },
-    defaultObligationRule: {
+    defaultBehaviorRule: {
       maxExpandedFiles: 2,
       maxInventorySources: 1,
+      maxInventoryBehaviors: 1,
       level: "error",
     },
     surfacePolicies: [],
     inventorySourcePolicies: [],
-    obligationPolicies: [],
+    behaviorPolicies: [],
   };
 }
 
@@ -144,7 +157,7 @@ describe("validateControlPlane", () => {
     writeProjectFile(
       root,
       "test/entry.test.ts",
-      "// runtime-obligations: request-entry.success\nexport const testFile = true;\n",
+      "// runtime-behaviors: request-entry.success\nexport const testFile = true;\n",
     );
 
     const inventory = makeInventory();
@@ -164,7 +177,7 @@ describe("validateControlPlane", () => {
     writeProjectFile(
       root,
       "test/entry.test.ts",
-      "// runtime-obligations: request-entry.success\nexport const testFile = true;\n",
+      "// runtime-behaviors: request-entry.success\nexport const testFile = true;\n",
     );
 
     const inventory = makeInventory();
@@ -196,7 +209,7 @@ describe("validateControlPlane", () => {
     writeProjectFile(
       root,
       "test/entry.test.ts",
-      "// runtime-obligations: request-entry.success\nexport const testFile = true;\n",
+      "// runtime-behaviors: request-entry.success\nexport const testFile = true;\n",
     );
 
     const inventory: RuntimeInventory = {
@@ -236,8 +249,39 @@ describe("validateControlPlane", () => {
       "Inventory source request-entry is missing required outcome class failure",
     );
     expect(messages).toContain(
-      "Obligation request-entry.success has fidelity simulated, below required minimum real-dependency",
+      "Behavior request-entry.success has fidelity simulated, below required minimum real-dependency",
     );
+  });
+
+  it("fails when a reviewed inventory behavior has no implementing behavior unit", () => {
+    const root = makeTempDir();
+    writeProjectFile(root, "src/entry.ts", "export const entry = true;\n");
+    writeProjectFile(
+      root,
+      "test/entry.test.ts",
+      "// runtime-behaviors: request-entry.success\nexport const testFile = true;\n",
+    );
+
+    const inventory = makeInventory();
+    const controlPlane = {
+      ...makeControlPlane(),
+      obligations: makeControlPlane().obligations.map((behavior) => ({
+        ...behavior,
+        inventoryBehaviorIds: [],
+        event: "A different runtime event.",
+      })),
+    };
+
+    const summary = validateControlPlane(controlPlane, root, {
+      inventory,
+      surfaceCatalog: deriveSurfaceCatalog(inventory),
+      discoveryPolicy: makeDiscoveryPolicy(),
+    });
+
+    expect(summary.issues.map((issue) => issue.message)).toContain(
+      "Inventory behavior request-entry.behavior does not have any implementing behavior units",
+    );
+    expect(summary.uncoveredInventoryBehaviors).toBe(1);
   });
 
   it("reports reviewed-model quality regressions when sources or obligations are too coarse", () => {
@@ -248,7 +292,7 @@ describe("validateControlPlane", () => {
     writeProjectFile(
       root,
       "test/pages.test.ts",
-      "// runtime-obligations: client.pages\nexport const testFile = true;\n",
+      "// runtime-behaviors: client.pages\nexport const testFile = true;\n",
     );
 
     const inventory: RuntimeInventory = {
@@ -315,7 +359,7 @@ describe("validateControlPlane", () => {
       "Inventory source client-pages resolves 3 files, above the allowed maximum 2",
     );
     expect(messages).toContain(
-      "Obligation client.pages resolves 3 files, above the allowed maximum 2",
+      "Behavior client.pages resolves 3 files, above the allowed maximum 2",
     );
   });
 
@@ -327,7 +371,7 @@ describe("validateControlPlane", () => {
     writeProjectFile(
       root,
       "test/entry.test.ts",
-      "// runtime-obligations: request-entry.success\nexport const testFile = true;\n",
+      "// runtime-behaviors: request-entry.success\nexport const testFile = true;\n",
     );
 
     const summary = validateControlPlane(makeControlPlane(), root, {
@@ -349,7 +393,7 @@ describe("validateControlPlane", () => {
     writeProjectFile(
       root,
       "test/entry.test.ts",
-      "// runtime-obligations: request-entry.success\nexport const testFile = true;\n",
+      "// runtime-behaviors: request-entry.success\nexport const testFile = true;\n",
     );
 
     const summary = validateControlPlane(makeControlPlane(), root, {
@@ -373,7 +417,7 @@ describe("validateControlPlane", () => {
     writeProjectFile(
       root,
       "test/entry.test.ts",
-      "// runtime-obligations: request-entry.success\nexport const testFile = true;\n",
+      "// runtime-behaviors: request-entry.success\nexport const testFile = true;\n",
     );
 
     const summary = validateControlPlane(makeControlPlane(), root, {
@@ -415,7 +459,7 @@ describe("analyzeImpact", () => {
     writeProjectFile(
       root,
       "test/entry.test.ts",
-      "// runtime-obligations: request-entry.success\nexport const testFile = true;\n",
+      "// runtime-behaviors: request-entry.success\nexport const testFile = true;\n",
     );
 
     const inventory = makeInventory();
@@ -430,6 +474,7 @@ describe("analyzeImpact", () => {
     );
 
     expect(impact.impactedInventorySources).toEqual(["request-entry"]);
+    expect(impact.impactedInventoryBehaviors).toEqual(["request-entry.behavior"]);
     expect(impact.impactedSurfaces).toEqual(["request-boundary"]);
     expect(impact.impactedObligations).toEqual(["request-entry.success"]);
     expect(impact.impactedOwnerTests).toEqual(["test/entry.test.ts"]);
@@ -647,7 +692,7 @@ describe("generateReviewBacklog", () => {
     writeProjectFile(
       root,
       "test/entry.test.ts",
-      "// runtime-obligations: request-entry.success\nexport const testFile = true;\n",
+      "// runtime-behaviors: request-entry.success\nexport const testFile = true;\n",
     );
 
     const inventory = makeInventory();
@@ -696,7 +741,7 @@ describe("buildRuntimeAgentContract", () => {
 
     expect(contract.readOrder[0]).toBe("testops/runtime-discovery-policy.json");
     expect(contract.readOrder).toContain("testops/runtime-quality-policy.json");
-    expect(contract.systemIdentity).toBe("runtime-governance-control-system");
+    expect(contract.systemIdentity).toBe("runtime-behavior-completeness-control-system");
     expect(contract.operatingModel).toContain("AI agents");
     expect(contract.reviewedDecisionMeaning).toContain("semantic treatment");
     expect(contract.actorRoles.map((role) => role.id)).toEqual([
@@ -708,7 +753,7 @@ describe("buildRuntimeAgentContract", () => {
     ]);
     expect(contract.governanceSignals).toContainEqual(
       expect.objectContaining({
-        id: "governance-validation",
+        id: "completeness-validation",
         primary: true,
         blocking: true,
       }),

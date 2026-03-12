@@ -6,12 +6,13 @@
     "maxExpandedFiles": 8,
     "level": "warning"
   },
-  "defaultObligationRule": {
+  "defaultBehaviorRule": {
     "maxExpandedFiles": 6,
     "maxInventorySources": 3,
+    "maxInventoryBehaviors": 2,
     "level": "warning"
   },
   "surfacePolicies": [],
   "inventorySourcePolicies": [],
-  "obligationPolicies": []
+  "behaviorPolicies": []
 }

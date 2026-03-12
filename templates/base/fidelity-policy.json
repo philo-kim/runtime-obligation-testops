@@ -12,5 +12,5 @@
   "defaultMinimumFidelity": "simulated",
   "surfacePolicies": [],
   "inventorySourcePolicies": [],
-  "obligationPolicies": []
+  "behaviorPolicies": []
 }

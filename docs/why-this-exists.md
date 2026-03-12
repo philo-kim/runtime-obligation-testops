@@ -29,7 +29,7 @@ flowchart TD
 
   H[runtime-obligation-testops] --> I[Reviewed denominator]
   H --> J[Discovery drift checks]
-  H --> K[Obligation / evidence ownership]
+  H --> K[Behavior / evidence ownership]
   H --> L[Granularity policy]
   I --> M[Governed runtime scope]
   J --> M
@@ -81,7 +81,7 @@ The goal is to make the runtime denominator itself a governed object.
 
 ## The core idea
 
-This package treats automated testing as a runtime governance problem.
+This package treats automated testing as a runtime behavior completeness problem.
 
 The managed object is not:
 
@@ -94,8 +94,9 @@ The managed object is:
 - the discovered runtime candidate set
 - the reviewed runtime denominator
 - the surfaces used to operate that denominator
-- the obligations that close it
-- the evidence that proves those obligations
+- the reviewed behaviors that define it
+- the behavior units that implement it
+- the evidence that proves those implementations
 - the tests that own that proof
 
 ## Why discovered vs reviewed matters
@@ -118,8 +119,9 @@ Use this package when you want a project to answer:
 
 - what the actual runtime denominator is
 - which runtime surfaces exist in this project
-- which obligations govern each surface
-- what evidence proves each obligation
+- which reviewed behaviors govern each surface
+- which behavior units implement them
+- what evidence proves each implementation
 - which tests own that proof
 - which proof is weaker than policy allows
 - whether discovery and review have drifted apart
@@ -154,7 +156,7 @@ That example shows:
 
 - how a runtime denominator is reviewed
 - how project-specific surfaces are derived
-- how obligations are attached to evidence and owner tests
+- how behavior units are attached to evidence and owner tests
 - how discovery is used to expose missing runtime layers
 
 It is a concrete case study of the original problem and the system extracted from solving it.

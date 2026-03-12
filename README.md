@@ -46,7 +46,7 @@ That is why this package exists.
 It is not a prettier coverage tool.
 It is a control system for the runtime denominator itself.
 
-## Runtime governance model
+## Runtime behavior completeness model
 
 ```mermaid
 flowchart LR
@@ -54,8 +54,8 @@ flowchart LR
   B --> C[Discovered runtime candidates]
   C --> D[Reviewed runtime inventory]
   D --> E[Runtime surfaces]
-  E --> F[Runtime obligations]
-  F --> G[Evidence and owner tests]
+  E --> F[Reviewed runtime behaviors]
+  F --> G[Implemented behavior units and owner tests]
   G --> H[Validate / Review / Impact]
   H --> I[CI gate]
 
@@ -64,8 +64,8 @@ flowchart LR
   K --> F
 ```
 
-The package governs that graph.
-Not just the tests at the bottom of it.
+The package governs whether reviewed runtime behaviors are actually implemented as tests.
+Not just whether a repo has many tests at the bottom of the stack.
 
 ## Who decides what
 
@@ -74,9 +74,9 @@ It is designed around a reviewed operating loop:
 
 - the scanner proposes candidates
 - repo-local policy shapes how those candidates should be interpreted
-- AI agents do most of the inventory, surface, obligation, annotation, and owner-test maintenance
+- AI agents do most of the inventory, surface, behavior, annotation, and owner-test maintenance
 - reviewers approve semantic decisions when acceptance, suppression, fidelity, or granularity is non-obvious
-- CI enforces the resulting governance gates
+- CI enforces the resulting behavior-completeness gates
 
 That distinction matters.
 If you describe this package as just a validator, people will use it too late in the workflow.
@@ -94,8 +94,9 @@ Most repos cannot tell you:
 
 - which runtime events define the real denominator
 - which surfaces partition that denominator
-- which obligations close those surfaces
-- what evidence proves each obligation
+- which reviewed runtime behaviors make up the denominator
+- which behavior units implement those behaviors
+- what evidence proves each implemented behavior
 - which tests own that evidence
 - whether discovery and the reviewed model have drifted apart
 
@@ -104,10 +105,10 @@ This package makes those questions explicit and operational.
 It also handles a second failure mode that appears after teams adopt a reviewed model:
 
 - the reviewed model exists
-- validation is green
-- but one inventory source or one obligation is so broad that real test gaps still hide inside it
+- validation looks clean
+- but one inventory source or one behavior unit is so broad that real test gaps still hide inside it
 
-`runtime-quality-policy.json` exists to make that reviewed-model smell explicit instead of letting it live behind a green control plane.
+`runtime-quality-policy.json` exists to make that reviewed-model smell explicit instead of letting it live behind a clean-looking control plane.
 
 ## Why line coverage is not enough
 
@@ -118,8 +119,8 @@ flowchart TD
   B --> D[Looks healthy]
   D --> E[Missing runtime layer can still hide]
 
-  F[runtime-obligation governance] --> G[Discovered vs reviewed drift]
-  F --> H[Surface / obligation closure]
+  F[runtime behavior completeness system] --> G[Discovered vs reviewed drift]
+  F --> H[Reviewed behavior closure]
   F --> I[Evidence / owner-test traceability]
   F --> J[Granularity quality gates]
   G --> K[Managed runtime denominator]
@@ -139,11 +140,11 @@ The package manages six connected artifacts:
 - `runtime-surfaces.json`
   - the project-specific management partition over that denominator
 - `runtime-control-plane.json`
-  - behavior units, evidence, fidelity, owner tests
+  - implemented behavior units, evidence, fidelity, owner tests
 - `fidelity-policy.json`
-  - the minimum proof strength required by surface, source, or obligation
+  - the minimum proof strength required by surface, source, or behavior unit
 - `runtime-quality-policy.json`
-  - reviewed-model quality gates that flag overly broad sources or obligations
+  - reviewed-model quality gates that flag overly broad sources or behavior units
 
 The first artifact manages discovery.
 The next four artifacts are the reviewed runtime model.
@@ -159,11 +160,12 @@ This package is intentionally split into two layers:
 - a universal control core
 - repo-local operating policy
 
-The universal core gives every project the same runtime-governance model:
+The universal core gives every project the same runtime-behavior model:
 
 - sources
 - surfaces
-- obligations
+- reviewed behaviors
+- implemented behavior units
 - outcomes
 - evidence
 - fidelity
@@ -190,7 +192,7 @@ flowchart LR
   B -->|suppress| D[Reviewed suppression]
   B -->|defer| E[Review backlog]
   C --> F[Surfaces]
-  F --> G[Obligations]
+  F --> G[Behavior units]
   G --> H[Owner tests]
   H --> I[Runtime proof]
 ```
@@ -214,10 +216,10 @@ If you trust only discovery, you get noisy heuristics instead of an operable sys
 | Actor | Primary job | What it should not do |
 |---|---|---|
 | Discovery engine | Propose runtime candidates and drift | Declare truth by itself |
-| Repo-local policy | Teach the scanner how this repo expresses runtime | Hide real runtime files just to get green output |
+| Repo-local policy | Teach the scanner how this repo expresses runtime | Hide real runtime files just to get clean-looking output |
 | AI agent | Perform most model, annotation, and owner-test updates | Stop at line coverage or raw test counts |
 | Reviewer | Approve semantic decisions | Rebuild the whole model manually every time |
-| CI | Enforce governance gates | Replace semantic review |
+| CI | Enforce completeness gates | Replace semantic review |
 
 ## What is universal and what is heuristic
 
@@ -311,13 +313,14 @@ If your repo uses non-default paths such as `testing/` instead of `testops/`, ke
 
 ## Reviewed-model quality
 
-`runtime-quality-policy.json` is the package's guard against a green-but-coarse reviewed model.
+`runtime-quality-policy.json` is the package's guard against a clean-but-coarse reviewed model.
 
 It can express rules such as:
 
 - maximum files per reviewed inventory source
-- maximum files per obligation
-- maximum reviewed inventory sources per obligation
+- maximum files per behavior unit
+- maximum reviewed inventory sources per behavior unit
+- maximum reviewed inventory behaviors per behavior unit
 
 Fidelity policy governs proof strength.
 Quality policy governs proof granularity.
@@ -349,12 +352,12 @@ sequenceDiagram
   AI->>R: inventory scan
   R-->>AI: discovered candidates
   AI->>Repo: accept / suppress / defer
-  AI->>Repo: update inventory / surfaces / obligations / owner tests
+  AI->>Repo: update inventory / surfaces / behaviors / owner tests
   AI->>R: review
   AI->>R: validate
   AI->>R: runtime tests
   AI->>R: code coverage (secondary)
-  R-->>CI: governance result
+  R-->>CI: completeness result
   CI-->>AI: pass or fail
 ```
 
@@ -365,7 +368,7 @@ sequenceDiagram
 3. Record suppressions, scope decisions, and scanner noise in `runtime-discovery-policy.json`.
 4. Accept the reviewed denominator in `runtime-inventory.json`.
 5. Derive or refine runtime surfaces in `runtime-surfaces.json`.
-6. Register obligations, evidence, fidelity, and owner tests in `runtime-control-plane.json`.
+6. Register reviewed behaviors, implemented behavior units, evidence, fidelity, and owner tests in `runtime-control-plane.json`.
 7. Export the machine-readable agent contract for local tooling or CI.
 8. Run `validate` before the main test suite.
 
@@ -375,9 +378,9 @@ sequenceDiagram
 - principles are consistent across artifacts
 - reviewed inventory sources map to reviewed surfaces
 - reviewed surfaces map to the control plane
-- reviewed runtime files are closed by obligations
+- reviewed runtime files are closed by implemented behavior units
 - owner tests exist and are referenced
-- `// runtime-obligations: ...` annotations do not drift
+- `// runtime-behaviors: ...` annotations do not drift
 - fidelity does not regress below policy
 - discovered runtime files are not missing from the reviewed denominator
 
@@ -392,7 +395,7 @@ The expected loop is:
 3. run `rotops review` when denominator drift may have changed
 4. compare discovered candidates to the reviewed model
 5. accept, suppress, or continue reviewing candidate drift through repo-local policy
-6. update obligations and owner tests
+6. update reviewed behaviors and owner tests
 7. export or refresh the machine-readable runtime agent contract when project paths or process changed
 8. rerun `rotops validate`
 
@@ -408,7 +411,7 @@ Use it when you want a repo to answer, concretely:
 - what part is still unreviewed
 - what proof exists
 - what proof is too weak
-- what changed files affect which obligations
+- what changed files affect which implemented behavior units
 
 Do not use it as a cosmetic wrapper around existing folder labels.
 If the runtime denominator is not reviewed, the system is being used incorrectly.
@@ -419,7 +422,7 @@ Different parts of the package mature at different speeds in different stacks.
 
 - control plane validation is generally portable
 - impact analysis is generally portable
-- reviewed-model governance is generally portable
+- reviewed-model completeness checks are generally portable
 - raw discovery quality depends on repo-local policy and codebase signals
 
 That is why this package exposes policy files instead of hiding heuristics inside the binary.
@@ -430,7 +433,7 @@ A repo using this package is publishable when:
 
 - new runtime entrypoints cannot land without denominator review
 - discovered-vs-declared drift fails CI
-- obligations own tests and annotations
+- behavior units own tests and annotations
 - proof strength is visible through fidelity policy
 - humans and AI agents read the same artifacts first
 

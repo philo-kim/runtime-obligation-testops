@@ -1,4 +1,5 @@
 import type {
+  RuntimeInventoryBehavior,
   FidelityPolicy,
   RuntimeControlPlane,
   RuntimeBehaviorUnit,
@@ -59,9 +60,17 @@ export function resolveMinimumFidelity(args: {
   obligation: RuntimeBehaviorUnit;
   surface?: RuntimeSurfaceDefinition;
   inventorySources?: RuntimeInventorySource[];
+  inventoryBehaviors?: RuntimeInventoryBehavior[];
   fidelityPolicy?: FidelityPolicy;
 }): string | undefined {
-  const { controlPlane, obligation, surface, inventorySources = [], fidelityPolicy } = args;
+  const {
+    controlPlane,
+    obligation,
+    surface,
+    inventorySources = [],
+    inventoryBehaviors = [],
+    fidelityPolicy,
+  } = args;
   const levels =
     fidelityPolicy?.fidelityLevels.length
       ? fidelityPolicy.fidelityLevels
@@ -70,9 +79,13 @@ export function resolveMinimumFidelity(args: {
   const surfacePolicy = fidelityPolicy?.surfacePolicies?.find(
     (policy) => policy.surfaceId === obligation.surface,
   );
-  const obligationPolicy = fidelityPolicy?.obligationPolicies?.find(
-    (policy) => policy.obligationId === obligation.id,
-  );
+  const behaviorPolicy = [
+    ...(fidelityPolicy?.behaviorPolicies ?? []),
+    ...((fidelityPolicy?.obligationPolicies ?? []).map((policy) => ({
+      ...policy,
+      behaviorId: policy.behaviorId ?? policy.obligationId,
+    }))),
+  ].find((policy) => policy.behaviorId === obligation.id);
 
   const inventoryPolicies = inventorySources
     .map((source) =>
@@ -88,8 +101,9 @@ export function resolveMinimumFidelity(args: {
       surface?.minimumFidelity,
       surfacePolicy?.minimumFidelity,
       ...inventorySources.map((source) => source.minimumFidelity),
+      ...inventoryBehaviors.map((behavior) => behavior.minimumFidelity),
       ...inventoryPolicies.map((policy) => policy?.minimumFidelity),
-      obligationPolicy?.minimumFidelity,
+      behaviorPolicy?.minimumFidelity,
     ],
     levels,
   );

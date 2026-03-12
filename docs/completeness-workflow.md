@@ -3,7 +3,7 @@
 The package manages two different but connected things:
 
 1. `discovered runtime candidates`
-2. `reviewed runtime obligations`
+2. `reviewed runtime behaviors`
 
 If you only manage the reviewed model, you can still miss part of the denominator.
 If you only trust discovery, you will drown in heuristics and false positives.
@@ -68,7 +68,7 @@ Without fidelity policy, teams can overclaim runtime confidence using only low-r
 
 The maximum coarseness the reviewed model is allowed to aggregate before it becomes a smell.
 
-Without quality policy, teams can keep a green control plane while still hiding gaps inside overly broad sources or obligations.
+Without quality policy, teams can keep a clean-looking control plane while still hiding gaps inside overly broad sources or behavior units.
 
 ## Recommended operating loop
 
@@ -79,17 +79,17 @@ Without quality policy, teams can keep a green control plane while still hiding 
 5. update `runtime-inventory.json`
 6. derive or update `runtime-surfaces.json`
 7. update `runtime-quality-policy.json` if the reviewed model got broader or was split
-8. update obligations and owner tests
+8. update reviewed behaviors, behavior units, and owner tests
 9. run `rotops validate`
 
 ## What `validate` now proves
 
 - declared inventory sources map to surfaces
 - declared surfaces map to the control plane
-- declared obligations close the declared inventory
+- declared behaviors close the declared inventory
 - owner tests and annotations are traceable
 - discovered runtime files are not silently missing from the declared inventory
-- reviewed sources and obligations are not broader than the quality policy allows
+- reviewed sources and behavior units are not broader than the quality policy allows
 
 ## What still requires review
 

@@ -40,7 +40,7 @@ Adopt it when a repo already has meaningful automation, but still struggles to a
 - what the real runtime denominator is
 - whether a runtime layer is missing from review
 - which tests actually own important behavior
-- which obligations are only covered by weak proof
+- which behavior units are only covered by weak proof
 
 If your team only wants a prettier test folder structure, this package is the wrong tool.
 
@@ -84,7 +84,7 @@ Use `runtime-discovery-policy.json` to:
 - override runtime categories with repo-local include or exclude patterns
 - keep CI stable
 
-Do not edit the reviewed denominator just to make validation green.
+Do not edit the reviewed denominator just to make validation look clean.
 Review discovery first.
 
 The discovery layer exists to challenge the reviewed model, not to be rewritten away.
@@ -94,7 +94,7 @@ The discovery layer exists to challenge the reviewed model, not to be rewritten 
 Move accepted runtime sources into `runtime-inventory.json`.
 
 This file is the denominator your team is willing to manage.
-If the denominator is wrong, every downstream green signal is weaker than it looks.
+If the denominator is wrong, every downstream clean-looking signal is weaker than it looks.
 
 ### 5. Derive management surfaces
 
@@ -114,9 +114,9 @@ Good surfaces are:
 There is no package-level fixed list.
 Surfaces are project-specific management partitions.
 
-### 6. Register obligations
+### 6. Register reviewed behaviors and behavior units
 
-For each surface, define obligations with:
+For each surface, define behavior units with:
 
 - event
 - outcomes
@@ -126,13 +126,14 @@ For each surface, define obligations with:
 
 ### 7. Add reviewed-model quality policy
 
-Define `runtime-quality-policy.json` once the reviewed model is large enough that coarse sources or obligations could hide gaps.
+Define `runtime-quality-policy.json` once the reviewed model is large enough that coarse sources or behavior units could hide gaps.
 
 Typical first rules:
 
 - maximum files per reviewed inventory source
-- maximum files per obligation
-- maximum reviewed inventory sources per obligation
+- maximum files per behavior unit
+- maximum reviewed inventory sources per behavior unit
+- maximum reviewed inventory behaviors per behavior unit
 
 Start with warnings if needed.
 Promote high-risk surfaces to errors when the model is stable enough.
@@ -142,10 +143,10 @@ Promote high-risk surfaces to errors when the model is stable enough.
 Annotate owner tests:
 
 ```ts
-// runtime-obligations: surface.example-obligation
+// runtime-behaviors: surface.example-behavior
 ```
 
-If a test owns no obligation, it should not be presented as runtime proof.
+If a test owns no reviewed behavior, it should not be presented as runtime proof.
 
 ### 9. Add the control gate to CI
 
@@ -186,8 +187,9 @@ At the end of adoption, your repo should be able to answer:
 
 - what the runtime denominator is
 - which surfaces partition it
-- which obligations close it
-- what evidence proves each obligation
+- which reviewed behaviors define it
+- which behavior units implement it
+- what evidence proves each implemented behavior
 - which tests own that proof
 - whether discovered runtime files are missing from the reviewed model
 
@@ -195,7 +197,7 @@ It should also be able to reject this failure mode:
 
 - high coverage
 - many tests
-- green CI
+- clean CI output
 - but no proof that the full runtime denominator is governed
 
 ## Public repo checklist

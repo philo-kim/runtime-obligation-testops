@@ -5,9 +5,9 @@
 It exists for a specific failure mode:
 
 - discovery drift is closed
-- every runtime source has an obligation
-- every obligation has owner tests
-- validation is green
+- every runtime source has an implemented behavior unit
+- every implemented behavior unit has owner tests
+- validation looks clean
 - but the reviewed model is so broad that missing runtime proof still hides inside it
 
 ## What it controls
@@ -15,15 +15,16 @@ It exists for a specific failure mode:
 Quality policy lets a repo set rules such as:
 
 - maximum files per reviewed inventory source
-- maximum files per obligation
-- maximum reviewed inventory sources per obligation
+- maximum files per behavior unit
+- maximum reviewed inventory sources per behavior unit
+- maximum reviewed inventory behaviors per behavior unit
 
 Rules can be set:
 
 - globally
 - per surface
 - per inventory source
-- per obligation
+- per behavior unit
 
 ## Why it is separate from fidelity
 

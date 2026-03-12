@@ -27,6 +27,7 @@ export interface RuntimeBehaviorUnit {
   surface: string;
   sourcePatterns: string[];
   inventorySourceIds?: string[];
+  inventoryBehaviorIds?: string[];
   event: string;
   outcomes: string[];
   outcomeClasses?: string[];
@@ -61,12 +62,22 @@ export interface RuntimeInventorySource {
   minimumFidelity?: string;
 }
 
+export interface RuntimeInventoryBehavior {
+  id: string;
+  sourceId: string;
+  event: string;
+  expectedEvidence?: string[];
+  expectedOutcomeClasses?: string[];
+  minimumFidelity?: string;
+}
+
 export interface RuntimeInventory {
   $schema?: string;
   version: string;
   principle: string;
   sourceKinds: string[];
   sources: RuntimeInventorySource[];
+  behaviors?: RuntimeInventoryBehavior[];
 }
 
 export interface RuntimeSurfaceDefinition {
@@ -97,9 +108,12 @@ export interface InventorySourceFidelityPolicy extends FidelityPolicyRule {
   inventorySourceId: string;
 }
 
-export interface ObligationFidelityPolicy extends FidelityPolicyRule {
-  obligationId: string;
+export interface BehaviorFidelityPolicy extends FidelityPolicyRule {
+  behaviorId?: string;
+  obligationId?: string;
 }
+
+export type ObligationFidelityPolicy = BehaviorFidelityPolicy;
 
 export interface FidelityPolicy {
   $schema?: string;
@@ -109,6 +123,7 @@ export interface FidelityPolicy {
   defaultMinimumFidelity?: string;
   surfacePolicies?: SurfaceFidelityPolicy[];
   inventorySourcePolicies?: InventorySourceFidelityPolicy[];
+  behaviorPolicies?: BehaviorFidelityPolicy[];
   obligationPolicies?: ObligationFidelityPolicy[];
 }
 
@@ -117,15 +132,19 @@ export interface InventorySourceQualityRule {
   level?: "error" | "warning";
 }
 
-export interface ObligationQualityRule {
+export interface BehaviorQualityRule {
   maxExpandedFiles?: number;
   maxInventorySources?: number;
+  maxInventoryBehaviors?: number;
   level?: "error" | "warning";
 }
+
+export type ObligationQualityRule = BehaviorQualityRule;
 
 export interface SurfaceQualityPolicy {
   surfaceId: string;
   inventorySourceRule?: InventorySourceQualityRule;
+  behaviorRule?: BehaviorQualityRule;
   obligationRule?: ObligationQualityRule;
 }
 
@@ -133,18 +152,23 @@ export interface InventorySourceQualityPolicy extends InventorySourceQualityRule
   inventorySourceId: string;
 }
 
-export interface ObligationQualityPolicy extends ObligationQualityRule {
-  obligationId: string;
+export interface BehaviorQualityPolicy extends BehaviorQualityRule {
+  behaviorId?: string;
+  obligationId?: string;
 }
+
+export type ObligationQualityPolicy = BehaviorQualityPolicy;
 
 export interface RuntimeQualityPolicy {
   $schema?: string;
   version: string;
   principle: string;
   defaultInventorySourceRule?: InventorySourceQualityRule;
+  defaultBehaviorRule?: BehaviorQualityRule;
   defaultObligationRule?: ObligationQualityRule;
   surfacePolicies?: SurfaceQualityPolicy[];
   inventorySourcePolicies?: InventorySourceQualityPolicy[];
+  behaviorPolicies?: BehaviorQualityPolicy[];
   obligationPolicies?: ObligationQualityPolicy[];
 }
 
@@ -197,6 +221,7 @@ export interface SurfaceSummary {
   tests: number;
   obligations: number;
   behaviors: number;
+  inventoryBehaviors: number;
   uncoveredSources: string[];
   unreferencedTests: string[];
 }
@@ -209,8 +234,10 @@ export interface ValidationSummary {
   discoveredSources?: number;
   discoveredFiles?: number;
   discoveryScopePatterns?: string[];
+  inventoryBehaviors?: number;
   behaviorUnits: number;
   incompleteBehaviorUnits: number;
+  uncoveredInventoryBehaviors: number;
   surfaceSummaries: SurfaceSummary[];
   issues: ValidationIssue[];
 }
@@ -233,6 +260,7 @@ export interface InitResult {
 export interface ImpactAnalysis {
   changedFiles: string[];
   impactedInventorySources: string[];
+  impactedInventoryBehaviors: string[];
   impactedSurfaces: string[];
   impactedBehaviors: string[];
   impactedObligations: string[];

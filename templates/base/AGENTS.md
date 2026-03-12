@@ -18,7 +18,7 @@ Before changing tests or behavior:
 4. run `rotops review` when denominator drift may have changed
 5. review repo-local discovery policy if the scanner is too noisy or too blind
 6. update inventory or surfaces if the runtime denominator changed
-7. update or add the matching runtime obligation
+7. update or add the matching reviewed runtime behavior or behavior unit
 8. connect observable evidence to owner tests
 9. run `rotops validate`
 

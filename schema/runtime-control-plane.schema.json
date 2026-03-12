@@ -219,6 +219,14 @@
             "minLength": 1
           }
         },
+        "inventoryBehaviorIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
         "event": {
           "type": "string",
           "minLength": 1

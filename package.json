@@ -1,7 +1,7 @@
 {
   "name": "runtime-obligation-testops",
-  "version": "0.7.0",
-  "description": "Universal runtime-obligation-first TestOps control system for AI agents, reviewed runtime governance, staged adoption, and traceable proof.",
+  "version": "0.8.0",
+  "description": "Universal runtime-obligation-first TestOps control system for AI agents, reviewed runtime behavior completeness, staged adoption, and traceable proof.",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -40,7 +40,8 @@
     "vitest",
     "agents",
     "ai",
-    "obligations"
+    "obligations",
+    "behaviors"
   ],
   "repository": {
     "type": "git",

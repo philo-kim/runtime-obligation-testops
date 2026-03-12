@@ -6,19 +6,22 @@ import type { ValidationSummary } from "./types.js";
 export function renderMarkdown(summary: ValidationSummary): string {
   const errorCount = summary.issues.filter((issue) => issue.level === "error").length;
   const warningCount = summary.issues.filter((issue) => issue.level === "warning").length;
-  const governanceStatus = errorCount > 0
+  const validationState = errorCount > 0
     ? "failing"
     : warningCount > 0
       ? "review-required"
-      : "green";
+      : "clean";
   const lines: string[] = [];
-  lines.push("# Runtime Governance Report");
+  lines.push("# Runtime Behavior Validation Report");
   lines.push("");
   lines.push(`- Version: ${summary.version}`);
   lines.push(`- Principle: ${summary.principle}`);
-  lines.push(`- Governance Status: ${governanceStatus}`);
+  lines.push(`- Validation State: ${validationState}`);
   if (summary.inventorySources !== undefined) {
     lines.push(`- Inventory Sources: ${summary.inventorySources}`);
+  }
+  if (summary.inventoryBehaviors !== undefined) {
+    lines.push(`- Inventory Behaviors: ${summary.inventoryBehaviors}`);
   }
   if (summary.derivedSurfaces !== undefined) {
     lines.push(`- Catalog Surfaces: ${summary.derivedSurfaces}`);
@@ -31,6 +34,7 @@ export function renderMarkdown(summary: ValidationSummary): string {
   }
   lines.push(`- Behavior Units: ${summary.behaviorUnits}`);
   lines.push(`- Incomplete Behavior Units: ${summary.incompleteBehaviorUnits}`);
+  lines.push(`- Uncovered Inventory Behaviors: ${summary.uncoveredInventoryBehaviors}`);
   if (summary.discoveryScopePatterns?.length) {
     lines.push(`- Discovery Scope: ${summary.discoveryScopePatterns.join(", ")}`);
   }
@@ -38,12 +42,12 @@ export function renderMarkdown(summary: ValidationSummary): string {
   lines.push(`- Warnings: ${warningCount}`);
   lines.push(`- Issues: ${summary.issues.length}`);
   lines.push("");
-  lines.push("| Surface | Sources | Tests | Behaviors | Uncovered | Unreferenced Tests |");
-  lines.push("|---|---:|---:|---:|---:|---:|");
+  lines.push("| Surface | Sources | Inventory Behaviors | Tests | Behavior Units | Uncovered | Unreferenced Tests |");
+  lines.push("|---|---:|---:|---:|---:|---:|---:|");
 
   for (const surface of summary.surfaceSummaries) {
     lines.push(
-      `| ${surface.id} | ${surface.sources} | ${surface.tests} | ${surface.behaviors} | ${surface.uncoveredSources.length} | ${surface.unreferencedTests.length} |`,
+      `| ${surface.id} | ${surface.sources} | ${surface.inventoryBehaviors} | ${surface.tests} | ${surface.behaviors} | ${surface.uncoveredSources.length} | ${surface.unreferencedTests.length} |`,
     );
   }
 
@@ -52,12 +56,12 @@ export function renderMarkdown(summary: ValidationSummary): string {
   if (summary.issues.length === 0) {
     lines.push("## Status");
     lines.push("");
-    lines.push("- The reviewed runtime denominator is closed by behavior units.");
+    lines.push("- The reviewed runtime denominator is closed by implemented behavior units.");
     lines.push("- Owner tests remain traceable back to reviewed behavior units.");
     if (summary.discoveredFiles !== undefined) {
       lines.push("- Discovered runtime candidates reconcile with the reviewed inventory.");
     }
-    lines.push("- Fidelity, granularity, and behavior completeness gates are currently green for the reviewed model.");
+    lines.push("- Fidelity, granularity, and behavior-completeness checks are clean for the reviewed model.");
     return lines.join("\n");
   }
 

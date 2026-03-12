@@ -111,7 +111,7 @@ export function renderReviewMarkdown(backlog: ReviewBacklog): string {
   const lines: string[] = [];
   lines.push("# Reviewed Runtime Decision Backlog");
   lines.push("");
-  lines.push("This backlog is the semantic review queue for the runtime governance system.");
+  lines.push("This backlog is the semantic review queue for the runtime behavior completeness system.");
   lines.push("AI, repo-local policy, and CI should do most of the mechanical work before a reviewer is asked to approve meaning.");
   lines.push("");
   lines.push(`- Principle: ${backlog.principle}`);
@@ -151,7 +151,7 @@ export function renderReviewMarkdown(backlog: ReviewBacklog): string {
 
 export function printReviewSummary(backlog: ReviewBacklog): void {
   console.log(`Reviewed runtime decision backlog ${backlog.version}`);
-  console.log("- governance model: AI + repo-local policy + CI maintain the reviewed runtime model");
+  console.log("- operating model: AI + repo-local policy + CI maintain the reviewed runtime behavior model");
   console.log("- reviewer role: approve semantic decisions when acceptance, suppression, fidelity, or granularity is non-obvious");
   console.log(`- discovered sources: ${backlog.discoveredSources}`);
   console.log(`- discovered files: ${backlog.discoveredFiles}`);

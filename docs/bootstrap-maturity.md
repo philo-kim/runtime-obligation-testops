@@ -24,7 +24,7 @@ and use:
 - `rotops impact`
 
 This is already useful.
-It gives you runtime traceability and obligation ownership even before discovery is trusted.
+It gives you runtime traceability and behavior-unit ownership even before discovery is trusted.
 AI agents can still operate effectively here because `impact`, `validate`, and the reviewed model are already machine-readable.
 
 ### 2. Advisory discovery
@@ -65,7 +65,7 @@ This is appropriate when:
 These parts tend to work across stacks first:
 
 - reviewed runtime model
-- obligation ownership
+- behavior-unit ownership
 - annotation traceability
 - fidelity governance
 - reviewed-model quality governance

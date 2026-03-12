@@ -96,8 +96,9 @@ These artifacts let teams govern:
 
 - what the runtime denominator is
 - how it is partitioned into operable surfaces
-- which obligations close those surfaces
-- what evidence proves each obligation
+- which reviewed behaviors define those surfaces
+- which behavior units implement them
+- what evidence proves each implementation
 - what minimum proof strength is acceptable
 
 ## Why discovered and reviewed both exist

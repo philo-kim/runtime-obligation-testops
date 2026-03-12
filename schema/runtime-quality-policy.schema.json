@@ -23,8 +23,11 @@
     "defaultInventorySourceRule": {
       "$ref": "#/$defs/inventorySourceRule"
     },
+    "defaultBehaviorRule": {
+      "$ref": "#/$defs/behaviorRule"
+    },
     "defaultObligationRule": {
-      "$ref": "#/$defs/obligationRule"
+      "$ref": "#/$defs/behaviorRule"
     },
     "surfacePolicies": {
       "type": "array",
@@ -42,6 +45,12 @@
       "type": "array",
       "items": {
         "$ref": "#/$defs/obligationPolicy"
+      }
+    },
+    "behaviorPolicies": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/behaviorPolicy"
       }
     }
   },
@@ -66,7 +75,7 @@
         }
       }
     },
-    "obligationRule": {
+    "behaviorRule": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -75,6 +84,10 @@
           "minimum": 1
         },
         "maxInventorySources": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxInventoryBehaviors": {
           "type": "integer",
           "minimum": 1
         },
@@ -97,8 +110,11 @@
         "inventorySourceRule": {
           "$ref": "#/$defs/inventorySourceRule"
         },
+        "behaviorRule": {
+          "$ref": "#/$defs/behaviorRule"
+        },
         "obligationRule": {
-          "$ref": "#/$defs/obligationRule"
+          "$ref": "#/$defs/behaviorRule"
         }
       }
     },
@@ -129,19 +145,19 @@
         }
       ]
     },
-    "obligationPolicy": {
+    "behaviorPolicy": {
       "allOf": [
         {
-          "$ref": "#/$defs/obligationRule"
+          "$ref": "#/$defs/behaviorRule"
         },
         {
           "type": "object",
           "additionalProperties": false,
           "required": [
-            "obligationId"
+            "behaviorId"
           ],
           "properties": {
-            "obligationId": {
+            "behaviorId": {
               "type": "string",
               "minLength": 1
             },
@@ -153,12 +169,19 @@
               "type": "integer",
               "minimum": 1
             },
+            "maxInventoryBehaviors": {
+              "type": "integer",
+              "minimum": 1
+            },
             "level": {
               "$ref": "#/$defs/issueLevel"
             }
           }
         }
       ]
+    },
+    "obligationPolicy": {
+      "$ref": "#/$defs/behaviorPolicy"
     }
   }
 }

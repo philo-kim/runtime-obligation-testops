@@ -1,8 +1,10 @@
 import { behaviorOwnerTests, getBehaviorUnits } from "./behaviors.js";
 import { expandPatterns, toPosix } from "./fs-utils.js";
+import { getInventoryBehaviors } from "./inventory-behaviors.js";
 import type {
   ImpactAnalysis,
   ProjectModel,
+  RuntimeInventoryBehavior,
   RuntimeInventorySource,
   RuntimeSurfaceDefinition,
 } from "./types.js";
@@ -43,6 +45,17 @@ function impactedSurfaceIds(
     .sort();
 }
 
+function impactedInventoryBehaviorIds(
+  inventoryBehaviors: RuntimeInventoryBehavior[],
+  inventorySources: RuntimeInventorySource[],
+): string[] {
+  const sourceIds = new Set(inventorySources.map((source) => source.id));
+  return inventoryBehaviors
+    .filter((behavior) => sourceIds.has(behavior.sourceId))
+    .map((behavior) => behavior.id)
+    .sort();
+}
+
 export function analyzeImpact(
   repoRoot: string,
   model: ProjectModel,
@@ -51,6 +64,9 @@ export function analyzeImpact(
   const normalizedChangedFiles = [...new Set(changedFiles.map((file) => toPosix(file)))].sort();
   const inventorySources = model.inventory
     ? impactedInventorySources(repoRoot, normalizedChangedFiles, model.inventory.sources)
+    : [];
+  const inventoryBehaviorIds = model.inventory
+    ? impactedInventoryBehaviorIds(getInventoryBehaviors(model.inventory), inventorySources)
     : [];
   const derivedSurfaceIds = model.surfaceCatalog
     ? impactedSurfaceIds(inventorySources, model.surfaceCatalog.surfaces)
@@ -70,6 +86,7 @@ export function analyzeImpact(
   return {
     changedFiles: normalizedChangedFiles,
     impactedInventorySources: inventorySources.map((source) => source.id).sort(),
+    impactedInventoryBehaviors: inventoryBehaviorIds,
     impactedSurfaces: surfaceIds,
     impactedBehaviors: behaviorIds,
     impactedObligations: behaviorIds,

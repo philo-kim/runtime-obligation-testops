@@ -42,7 +42,7 @@ export function expandPatterns(
 }
 
 export function parseRuntimeObligationsAnnotation(source: string): string[] {
-  const match = source.match(/^\s*\/\/\s*runtime-obligations:\s*([^\r\n]+)/m);
+  const match = source.match(/^\s*\/\/\s*runtime-(?:behaviors|obligations):\s*([^\r\n]+)/m);
   if (!match) {
     return [];
   }

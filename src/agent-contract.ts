@@ -49,9 +49,9 @@ export function buildRuntimeAgentContract(
   return {
     principle: options.principle,
     version: options.version,
-    systemIdentity: "runtime-governance-control-system",
+    systemIdentity: "runtime-behavior-completeness-control-system",
     operatingModel:
-      "AI agents, repo-local policy, and CI maintain the reviewed runtime model continuously; reviewed decisions are reserved for semantic approval, not routine bookkeeping.",
+      "AI agents, repo-local policy, and CI maintain the reviewed runtime behavior model continuously; reviewed decisions are reserved for semantic approval, not routine bookkeeping.",
     reviewedDecisionMeaning:
       "Approve or reject the semantic treatment of discovered runtime candidates, denominator boundaries, behavior-unit scope, evidence sufficiency, fidelity, and suppressions.",
     actorRoles: [
@@ -67,8 +67,8 @@ export function buildRuntimeAgentContract(
       },
       {
         id: "ai-agent",
-        responsibility: "Update the reviewed model, owner tests, annotations, and governance artifacts as the default operator.",
-        authority: "default runtime-governance operator",
+        responsibility: "Update the reviewed model, owner tests, annotations, and completeness artifacts as the default operator.",
+        authority: "default runtime-completeness operator",
       },
       {
         id: "reviewer",
@@ -77,7 +77,7 @@ export function buildRuntimeAgentContract(
       },
       {
         id: "ci-gate",
-        responsibility: "Enforce governance gates so unresolved runtime drift or proof regressions do not merge silently.",
+        responsibility: "Enforce completeness gates so unresolved runtime drift or proof regressions do not merge silently.",
         authority: "merge enforcement",
       },
     ],
@@ -95,7 +95,7 @@ export function buildRuntimeAgentContract(
         blocking: false,
       },
       {
-        id: "governance-validation",
+        id: "completeness-validation",
         meaning: "The reviewed runtime model satisfies completeness, traceability, fidelity, and granularity rules.",
         primary: true,
         blocking: true,

@@ -1,9 +1,10 @@
 import path from "node:path";
 import { existsSync, readFileSync } from "node:fs";
 import { behaviorImplementationStatus, behaviorOwnerTests, getBehaviorUnits } from "./behaviors.js";
-import { obligationMeetsFidelity, resolveMinimumFidelity } from "./fidelity.js";
+import { obligationMeetsFidelity, resolveMinimumFidelity, maxFidelity } from "./fidelity.js";
 import { expandPatterns, parseRuntimeObligationsAnnotation } from "./fs-utils.js";
 import { getDiscoveryRuleIds, scanRuntimeInventory } from "./inventory.js";
+import { getInventoryBehaviors } from "./inventory-behaviors.js";
 import {
   validateControlPlaneShape,
   validateDiscoveryPolicyShape,
@@ -14,11 +15,12 @@ import {
 } from "./schema.js";
 import type {
   InventorySourceQualityRule,
-  ObligationQualityRule,
+  BehaviorQualityRule,
   RuntimeControlPlane,
   RuntimeDiscoveryPolicy,
   RuntimeBehaviorUnit,
   RuntimeInventory,
+  RuntimeInventoryBehavior,
   RuntimeInventorySource,
   RuntimeQualityPolicy,
   RuntimeSurfaceCatalog,
@@ -138,7 +140,7 @@ function validateQualityPolicySemantics(
     }
     seenSurfaceIds.add(surfacePolicy.surfaceId);
 
-    if (!surfacePolicy.inventorySourceRule && !surfacePolicy.obligationRule) {
+    if (!surfacePolicy.inventorySourceRule && !surfacePolicy.behaviorRule && !surfacePolicy.obligationRule) {
       issues.push({
         level: "warning",
         message: `Quality policy surface ${surfacePolicy.surfaceId} does not define any quality rules`,
@@ -163,21 +165,36 @@ function validateQualityPolicySemantics(
     seenInventorySourceIds.add(sourcePolicy.inventorySourceId);
   }
 
-  const seenObligationIds = new Set<string>();
-  for (const obligationPolicy of qualityPolicy.obligationPolicies ?? []) {
-    if (!knownObligationIds.has(obligationPolicy.obligationId)) {
+  const normalizedBehaviorPolicies = [
+    ...(qualityPolicy.behaviorPolicies ?? []),
+    ...((qualityPolicy.obligationPolicies ?? []).map((policy) => ({
+      ...policy,
+      behaviorId: policy.behaviorId ?? policy.obligationId,
+    }))),
+  ];
+
+  const seenBehaviorIds = new Set<string>();
+  for (const behaviorPolicy of normalizedBehaviorPolicies) {
+    if (!behaviorPolicy.behaviorId) {
       issues.push({
         level: "error",
-        message: `Quality policy references unknown obligation ${obligationPolicy.obligationId}`,
+        message: "Quality policy defines a behavior policy without a behaviorId",
       });
+      continue;
     }
-    if (seenObligationIds.has(obligationPolicy.obligationId)) {
+    if (!knownObligationIds.has(behaviorPolicy.behaviorId)) {
       issues.push({
         level: "error",
-        message: `Quality policy defines multiple obligation policies for ${obligationPolicy.obligationId}`,
+        message: `Quality policy references unknown behavior ${behaviorPolicy.behaviorId}`,
       });
     }
-    seenObligationIds.add(obligationPolicy.obligationId);
+    if (seenBehaviorIds.has(behaviorPolicy.behaviorId)) {
+      issues.push({
+        level: "error",
+        message: `Quality policy defines multiple behavior policies for ${behaviorPolicy.behaviorId}`,
+      });
+    }
+    seenBehaviorIds.add(behaviorPolicy.behaviorId);
   }
 }
 
@@ -205,22 +222,31 @@ function resolveInventorySourceQualityRule(
   );
 }
 
-function resolveObligationQualityRule(
+function resolveBehaviorQualityRule(
   qualityPolicy: RuntimeQualityPolicy | undefined,
   surfaceId: string,
-  obligationId: string,
-): ObligationQualityRule | undefined {
+  behaviorId: string,
+): BehaviorQualityRule | undefined {
   const surfaceRule = qualityPolicy?.surfacePolicies?.find(
     (policy) => policy.surfaceId === surfaceId,
-  )?.obligationRule;
-  const obligationRule = qualityPolicy?.obligationPolicies?.find(
-    (policy) => policy.obligationId === obligationId,
+  );
+  const normalizedBehaviorPolicies = [
+    ...(qualityPolicy?.behaviorPolicies ?? []),
+    ...((qualityPolicy?.obligationPolicies ?? []).map((policy) => ({
+      ...policy,
+      behaviorId: policy.behaviorId ?? policy.obligationId,
+    }))),
+  ];
+  const behaviorRule = normalizedBehaviorPolicies.find(
+    (policy) => policy.behaviorId === behaviorId,
   );
 
   return mergeDefined(
+    qualityPolicy?.defaultBehaviorRule,
     qualityPolicy?.defaultObligationRule,
-    surfaceRule,
-    obligationRule,
+    surfaceRule?.behaviorRule,
+    surfaceRule?.obligationRule,
+    behaviorRule,
   );
 }
 
@@ -363,6 +389,30 @@ function catalogSurfaceById(
   return surfaceCatalog?.surfaces.find((surface) => surface.id === id);
 }
 
+function inventoryBehaviorById(
+  behaviors: RuntimeInventoryBehavior[],
+  id: string,
+): RuntimeInventoryBehavior | undefined {
+  return behaviors.find((behavior) => behavior.id === id);
+}
+
+function behaviorMatchesInventoryBehavior(
+  behaviorUnit: RuntimeBehaviorUnit,
+  inventoryBehavior: RuntimeInventoryBehavior,
+  tracedInventorySources: RuntimeInventorySource[],
+): boolean {
+  if (behaviorUnit.inventoryBehaviorIds?.length) {
+    return behaviorUnit.inventoryBehaviorIds.includes(inventoryBehavior.id);
+  }
+
+  const tracedSourceIds = new Set(tracedInventorySources.map((source) => source.id));
+  if (!tracedSourceIds.has(inventoryBehavior.sourceId)) {
+    return false;
+  }
+
+  return behaviorUnit.event.trim() === inventoryBehavior.event.trim();
+}
+
 export function validateControlPlane(
   controlPlane: RuntimeControlPlane,
   repoRoot: string,
@@ -466,6 +516,8 @@ export function validateControlPlane(
   );
 
   const behaviorUnits = getBehaviorUnits(controlPlane);
+  const inventoryBehaviors = getInventoryBehaviors(inventory);
+  const inventoryHasExplicitBehaviors = Boolean(inventory?.behaviors?.length);
 
   uniqueIdIssues(
     issues,
@@ -481,6 +533,11 @@ export function validateControlPlane(
     issues,
     "inventory source id",
     inventory?.sources.map((source) => source.id) ?? [],
+  );
+  uniqueIdIssues(
+    issues,
+    "inventory behavior id",
+    inventoryBehaviors.map((behavior) => behavior.id),
   );
   uniqueIdIssues(
     issues,
@@ -507,6 +564,17 @@ export function validateControlPlane(
       level: "error",
       message: "The control plane does not define any runtime behavior units",
     });
+  }
+
+  if (inventory) {
+    for (const inventoryBehavior of inventoryBehaviors) {
+      if (!inventorySourceById(inventory, inventoryBehavior.sourceId)) {
+        issues.push({
+          level: "error",
+          message: `Inventory behavior ${inventoryBehavior.id} references unknown inventory source ${inventoryBehavior.sourceId}`,
+        });
+      }
+    }
   }
 
   const surfaceSources = new Map<string, string[]>();
@@ -628,8 +696,10 @@ export function validateControlPlane(
 
   const obligationSources = new Map<string, string[]>();
   const obligationInventorySources = new Map<string, RuntimeInventorySource[]>();
-  const outcomesByObligation = new Map<string, string[]>();
+  const obligationInventoryBehaviors = new Map<string, RuntimeInventoryBehavior[]>();
+  const outcomesByBehavior = new Map<string, string[]>();
   let incompleteBehaviorUnits = 0;
+  let uncoveredInventoryBehaviors = 0;
 
   for (const obligation of behaviorUnits) {
     const surface = surfaceById(controlPlane, obligation.surface);
@@ -637,7 +707,7 @@ export function validateControlPlane(
     if (!surface) {
       issues.push({
         level: "error",
-        message: `Obligation ${obligation.id} references unknown surface ${obligation.surface}`,
+        message: `Behavior ${obligation.id} references unknown surface ${obligation.surface}`,
       });
       continue;
     }
@@ -645,21 +715,21 @@ export function validateControlPlane(
     if (!obligation.event.trim()) {
       issues.push({
         level: "error",
-        message: `Obligation ${obligation.id} is missing an event description`,
+        message: `Behavior ${obligation.id} is missing an event description`,
       });
     }
 
     if (obligation.outcomes.length === 0) {
       issues.push({
         level: "error",
-        message: `Obligation ${obligation.id} has no outcomes`,
+        message: `Behavior ${obligation.id} has no outcomes`,
       });
     }
 
     if (obligation.evidence.length === 0) {
       issues.push({
         level: "error",
-        message: `Obligation ${obligation.id} has no observable evidence`,
+        message: `Behavior ${obligation.id} has no observable evidence`,
       });
     }
 
@@ -667,7 +737,7 @@ export function validateControlPlane(
       if (!controlPlane.evidenceKinds.includes(evidence)) {
         issues.push({
           level: "error",
-          message: `Obligation ${obligation.id} uses unsupported evidence kind ${evidence}`,
+          message: `Behavior ${obligation.id} uses unsupported evidence kind ${evidence}`,
         });
       }
     }
@@ -675,7 +745,7 @@ export function validateControlPlane(
     if (!controlPlane.fidelityLevels.includes(obligation.fidelity)) {
       issues.push({
         level: "error",
-        message: `Obligation ${obligation.id} uses unsupported fidelity ${obligation.fidelity}`,
+        message: `Behavior ${obligation.id} uses unsupported fidelity ${obligation.fidelity}`,
       });
     }
 
@@ -698,7 +768,7 @@ export function validateControlPlane(
     if (sources.length === 0) {
       issues.push({
         level: "error",
-        message: `Obligation ${obligation.id} did not resolve any runtime sources`,
+        message: `Behavior ${obligation.id} did not resolve any runtime sources`,
       });
     }
 
@@ -735,17 +805,39 @@ export function validateControlPlane(
     if (inventory && matchedInventorySources.length === 0) {
       issues.push({
         level: "error",
-        message: `Obligation ${obligation.id} is not traceable to any inventory source`,
+        message: `Behavior ${obligation.id} is not traceable to any inventory source`,
       });
     }
 
-    outcomesByObligation.set(obligation.id, parseOutcomeClasses(obligation));
+    const matchedInventoryBehaviors = inventory
+      ? inventoryBehaviors.filter((inventoryBehavior) =>
+          behaviorMatchesInventoryBehavior(
+            obligation,
+            inventoryBehavior,
+            matchedInventorySources,
+          ))
+      : [];
+    obligationInventoryBehaviors.set(obligation.id, matchedInventoryBehaviors);
+
+    if (inventory && obligation.inventoryBehaviorIds?.length) {
+      for (const behaviorId of obligation.inventoryBehaviorIds) {
+        if (!inventoryBehaviorById(inventoryBehaviors, behaviorId)) {
+          issues.push({
+            level: "error",
+            message: `Behavior ${obligation.id} references unknown inventory behavior ${behaviorId}`,
+          });
+        }
+      }
+    }
+
+    outcomesByBehavior.set(obligation.id, parseOutcomeClasses(obligation));
 
     const minimumFidelity = resolveMinimumFidelity({
       controlPlane,
       obligation,
       surface: catalogSurfaceById(surfaceCatalog, obligation.surface),
       inventorySources: matchedInventorySources,
+      inventoryBehaviors: matchedInventoryBehaviors,
       fidelityPolicy,
     });
 
@@ -761,7 +853,7 @@ export function validateControlPlane(
     ) {
       issues.push({
         level: "error",
-        message: `Obligation ${obligation.id} has fidelity ${obligation.fidelity}, below required minimum ${minimumFidelity}`,
+        message: `Behavior ${obligation.id} has fidelity ${obligation.fidelity}, below required minimum ${minimumFidelity}`,
       });
     }
 
@@ -778,7 +870,7 @@ export function validateControlPlane(
       if (!existsSync(absoluteOwnerTest)) {
         issues.push({
           level: "error",
-          message: `Obligation ${obligation.id} references missing owner test ${ownerTest}`,
+          message: `Behavior ${obligation.id} references missing owner test ${ownerTest}`,
         });
         continue;
       }
@@ -787,7 +879,7 @@ export function validateControlPlane(
       if (!knownSurfaceTests.includes(ownerTest)) {
         issues.push({
           level: "error",
-          message: `Obligation ${obligation.id} references ${ownerTest}, which is not registered under surface ${surface.id}`,
+          message: `Behavior ${obligation.id} references ${ownerTest}, which is not registered under surface ${surface.id}`,
         });
       }
 
@@ -807,14 +899,14 @@ export function validateControlPlane(
       if (requireAnnotations && annotatedIds.length === 0) {
         issues.push({
           level: "error",
-          message: `Owner test ${ownerTest} is missing a runtime-obligations annotation`,
+          message: `Owner test ${ownerTest} is missing a runtime-behaviors annotation`,
         });
       }
 
       if (annotatedIds.length > 0 && !annotatedIds.includes(obligation.id)) {
         issues.push({
           level: "error",
-          message: `Test ${ownerTest} has runtime-obligations annotation but does not include ${obligation.id}`,
+          message: `Test ${ownerTest} has runtime-behaviors annotation but does not include ${obligation.id}`,
         });
       }
     }
@@ -858,7 +950,7 @@ export function validateControlPlane(
       }
 
       const observedOutcomeClasses = union(
-        obligations.map((obligation) => outcomesByObligation.get(obligation.id) ?? []),
+        obligations.map((obligation) => outcomesByBehavior.get(obligation.id) ?? []),
       );
       const expectedOutcomeClasses = union([
         source.expectedOutcomeClasses ?? [],
@@ -892,8 +984,96 @@ export function validateControlPlane(
     }
   }
 
+  if (inventory) {
+    for (const inventoryBehavior of inventoryBehaviors) {
+      const source = inventorySourceById(inventory, inventoryBehavior.sourceId);
+      if (!source) {
+        continue;
+      }
+
+      const surfaceId = sourceToSurfaceMap.get(source.id);
+      const catalogSurface = surfaceId ? catalogSurfaceById(surfaceCatalog, surfaceId) : undefined;
+      const implementingBehaviors = behaviorUnits.filter((behavior) =>
+        obligationInventoryBehaviors
+          .get(behavior.id)
+          ?.some((matchedBehavior) => matchedBehavior.id === inventoryBehavior.id),
+      );
+
+      if (implementingBehaviors.length === 0) {
+        uncoveredInventoryBehaviors += 1;
+        issues.push({
+          level: "error",
+          message: `Inventory behavior ${inventoryBehavior.id} does not have any implementing behavior units`,
+        });
+        continue;
+      }
+
+      const observedEvidence = union(implementingBehaviors.map((behavior) => behavior.evidence));
+      const expectedEvidence = union([
+        ...(inventoryHasExplicitBehaviors ? [] : [source.expectedEvidence ?? []]),
+        inventoryBehavior.expectedEvidence ?? [],
+        catalogSurface?.requiredEvidence ?? [],
+      ]);
+
+      for (const evidence of expectedEvidence) {
+        if (!observedEvidence.includes(evidence)) {
+          issues.push({
+            level: "error",
+            message: `Inventory behavior ${inventoryBehavior.id} is missing required evidence ${evidence}`,
+          });
+        }
+      }
+
+      const observedOutcomeClasses = union(
+        implementingBehaviors.map((behavior) => outcomesByBehavior.get(behavior.id) ?? []),
+      );
+      const expectedOutcomeClasses = union([
+        ...(inventoryHasExplicitBehaviors ? [] : [source.expectedOutcomeClasses ?? []]),
+        inventoryBehavior.expectedOutcomeClasses ?? [],
+        catalogSurface?.requiredOutcomeClasses ?? [],
+      ]);
+
+      for (const outcomeClass of expectedOutcomeClasses) {
+        if (!observedOutcomeClasses.includes(outcomeClass)) {
+          issues.push({
+            level: "error",
+            message: `Inventory behavior ${inventoryBehavior.id} is missing required outcome class ${outcomeClass}`,
+          });
+        }
+      }
+
+      const minimumBehaviorFidelity = maxFidelity(
+        [
+          ...(inventoryHasExplicitBehaviors ? [] : [source.minimumFidelity]),
+          inventoryBehavior.minimumFidelity,
+          catalogSurface?.minimumFidelity,
+        ],
+        fidelityPolicy?.fidelityLevels.length
+          ? fidelityPolicy.fidelityLevels
+          : controlPlane.fidelityLevels,
+      );
+
+      if (
+        minimumBehaviorFidelity &&
+        !implementingBehaviors.some((behavior) =>
+          obligationMeetsFidelity(
+            behavior.fidelity,
+            minimumBehaviorFidelity,
+            fidelityPolicy?.fidelityLevels.length
+              ? fidelityPolicy.fidelityLevels
+              : controlPlane.fidelityLevels,
+          ))
+      ) {
+        issues.push({
+          level: "error",
+          message: `Inventory behavior ${inventoryBehavior.id} does not have any implementing behavior unit at minimum fidelity ${minimumBehaviorFidelity}`,
+        });
+      }
+    }
+  }
+
   for (const obligation of behaviorUnits) {
-    const obligationQualityRule = resolveObligationQualityRule(
+    const obligationQualityRule = resolveBehaviorQualityRule(
       qualityPolicy,
       obligation.surface,
       obligation.id,
@@ -910,7 +1090,7 @@ export function validateControlPlane(
     ) {
       issues.push({
         level: obligationQualityRule.level ?? "error",
-        message: `Obligation ${obligation.id} resolves ${resolvedFiles} files, above the allowed maximum ${obligationQualityRule.maxExpandedFiles}`,
+        message: `Behavior ${obligation.id} resolves ${resolvedFiles} files, above the allowed maximum ${obligationQualityRule.maxExpandedFiles}`,
       });
     }
 
@@ -921,7 +1101,18 @@ export function validateControlPlane(
     ) {
       issues.push({
         level: obligationQualityRule.level ?? "error",
-        message: `Obligation ${obligation.id} spans ${tracedInventorySources} inventory sources, above the allowed maximum ${obligationQualityRule.maxInventorySources}`,
+        message: `Behavior ${obligation.id} spans ${tracedInventorySources} inventory sources, above the allowed maximum ${obligationQualityRule.maxInventorySources}`,
+      });
+    }
+
+    const tracedInventoryBehaviors = obligationInventoryBehaviors.get(obligation.id)?.length ?? 0;
+    if (
+      obligationQualityRule.maxInventoryBehaviors !== undefined &&
+      tracedInventoryBehaviors > obligationQualityRule.maxInventoryBehaviors
+    ) {
+      issues.push({
+        level: obligationQualityRule.level ?? "error",
+        message: `Behavior ${obligation.id} spans ${tracedInventoryBehaviors} inventory behaviors, above the allowed maximum ${obligationQualityRule.maxInventoryBehaviors}`,
       });
     }
   }
@@ -991,6 +1182,7 @@ export function validateControlPlane(
       tests: tests.length,
       obligations: obligations.length,
       behaviors: obligations.length,
+      inventoryBehaviors: inventoryBehaviors.filter((behavior) => sourceToSurfaceMap.get(behavior.sourceId) === surface.id).length,
       uncoveredSources,
       unreferencedTests,
     };
@@ -1004,8 +1196,10 @@ export function validateControlPlane(
     discoveredSources: discoveredInventory?.sources.length,
     discoveredFiles: discoveredInventoryGrouped?.sourcesByFile.size,
     discoveryScopePatterns: discoveryPolicy?.scopePatterns,
+    inventoryBehaviors: inventoryBehaviors.length || undefined,
     behaviorUnits: behaviorUnits.length,
     incompleteBehaviorUnits,
+    uncoveredInventoryBehaviors,
     surfaceSummaries,
     issues,
   };
@@ -1014,16 +1208,19 @@ export function validateControlPlane(
 export function printSummary(summary: ValidationSummary): void {
   const errorCount = summary.issues.filter((issue) => issue.level === "error").length;
   const warningCount = summary.issues.filter((issue) => issue.level === "warning").length;
-  const governanceStatus = errorCount > 0
+  const validationState = errorCount > 0
     ? "failing"
     : warningCount > 0
       ? "review-required"
-      : "green";
+      : "clean";
 
-  console.log(`Runtime governance summary ${summary.version}`);
-  console.log(`- governance status: ${governanceStatus}`);
+  console.log(`Runtime behavior validation summary ${summary.version}`);
+  console.log(`- validation state: ${validationState}`);
   if (summary.inventorySources !== undefined) {
     console.log(`- inventory sources: ${summary.inventorySources}`);
+  }
+  if (summary.inventoryBehaviors !== undefined) {
+    console.log(`- inventory behaviors: ${summary.inventoryBehaviors}`);
   }
   if (summary.derivedSurfaces !== undefined) {
     console.log(`- catalog surfaces: ${summary.derivedSurfaces}`);
@@ -1036,18 +1233,19 @@ export function printSummary(summary: ValidationSummary): void {
   }
   console.log(`- behavior units: ${summary.behaviorUnits}`);
   console.log(`- incomplete behavior units: ${summary.incompleteBehaviorUnits}`);
+  console.log(`- uncovered inventory behaviors: ${summary.uncoveredInventoryBehaviors}`);
   if (summary.discoveryScopePatterns?.length) {
     console.log(`- discovery scope: ${summary.discoveryScopePatterns.join(", ")}`);
   }
 
   for (const surface of summary.surfaceSummaries) {
     console.log(
-      `- ${surface.id}: sources=${surface.sources}, tests=${surface.tests}, behaviors=${surface.behaviors}, uncovered=${surface.uncoveredSources.length}, unreferencedTests=${surface.unreferencedTests.length}`,
+      `- ${surface.id}: sources=${surface.sources}, tests=${surface.tests}, inventoryBehaviors=${surface.inventoryBehaviors}, behaviorUnits=${surface.behaviors}, uncovered=${surface.uncoveredSources.length}, unreferencedTests=${surface.unreferencedTests.length}`,
     );
   }
 
   if (summary.issues.length === 0) {
-    console.log("- governance issues: 0");
+    console.log("- validation issues: 0");
     return;
   }
 
