@@ -9,6 +9,8 @@ import type {
   RuntimeControlPlane,
   RuntimeInventory,
   RuntimeQualityPolicy,
+  RuntimeRetrospectiveLog,
+  RuntimeSelfCheckPolicy,
   RuntimeSurfaceCatalog,
 } from "./types.js";
 
@@ -27,7 +29,9 @@ export type SchemaName =
   | "runtime-surfaces"
   | "fidelity-policy"
   | "runtime-quality-policy"
-  | "runtime-discovery-policy";
+  | "runtime-discovery-policy"
+  | "runtime-self-check-policy"
+  | "runtime-retrospective";
 
 function schemaPath(schemaName: SchemaName): string {
   return path.join(packageRoot, "schema", `${schemaName}.schema.json`);
@@ -81,4 +85,12 @@ export function validateQualityPolicyShape(qualityPolicy: RuntimeQualityPolicy):
 
 export function validateDiscoveryPolicyShape(discoveryPolicy: RuntimeDiscoveryPolicy): string[] {
   return validateShape(discoveryPolicy, "runtime-discovery-policy");
+}
+
+export function validateSelfCheckPolicyShape(selfCheckPolicy: RuntimeSelfCheckPolicy): string[] {
+  return validateShape(selfCheckPolicy, "runtime-self-check-policy");
+}
+
+export function validateRetrospectiveShape(retrospective: RuntimeRetrospectiveLog): string[] {
+  return validateShape(retrospective, "runtime-retrospective");
 }

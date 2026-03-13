@@ -1,0 +1,16 @@
+{
+  "$schema": "./runtime-self-check-policy.schema.json",
+  "version": "1.0.0",
+  "principle": "runtime-behavior-completeness",
+  "requireExplicitInventoryBehaviors": true,
+  "requireExplicitBehaviorMappings": true,
+  "maxBehaviorsPerOwnerTest": 4,
+  "maxOwnerTestsPerBehavior": 3,
+  "riskyKindMinimumFidelity": [
+    {
+      "kindPattern": "(background|queue|worker|scheduler|persistence|storage|database)",
+      "minimumFidelity": "real-dependency",
+      "level": "warning"
+    }
+  ]
+}

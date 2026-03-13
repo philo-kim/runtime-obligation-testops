@@ -9,6 +9,8 @@ export * from "./behaviors.js";
 export * from "./fidelity.js";
 export * from "./impact.js";
 export * from "./review.js";
+export * from "./self-check.js";
+export * from "./retro.js";
 export * from "./agent-contract.js";
 export * from "./validation.js";
 export * from "./report.js";

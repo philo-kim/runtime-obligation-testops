@@ -10,8 +10,14 @@ import {
   DEFAULT_QUALITY_POLICY_PATH,
   DEFAULT_REPORT_JSON_PATH,
   DEFAULT_REPORT_MD_PATH,
+  DEFAULT_RETROSPECTIVE_JSON_PATH,
+  DEFAULT_RETROSPECTIVE_MD_PATH,
+  DEFAULT_RETROSPECTIVE_PATH,
   DEFAULT_REVIEW_JSON_PATH,
   DEFAULT_REVIEW_MD_PATH,
+  DEFAULT_SELF_CHECK_JSON_PATH,
+  DEFAULT_SELF_CHECK_MD_PATH,
+  DEFAULT_SELF_CHECK_POLICY_PATH,
   DEFAULT_SURFACES_PATH,
 } from "./constants.js";
 import { generateVitestWorkspace } from "./adapters/vitest.js";
@@ -22,8 +28,10 @@ import { analyzeImpact } from "./impact.js";
 import { initWorkspace } from "./init.js";
 import { scanRuntimeInventory } from "./inventory.js";
 import { loadProjectModel, resolveProjectPaths } from "./model.js";
+import { analyzeRetrospective, printRetrospectiveSummary, renderRetrospectiveMarkdown } from "./retro.js";
 import { writeReports } from "./report.js";
 import { generateReviewBacklog, printReviewSummary, renderReviewMarkdown } from "./review.js";
+import { printSelfCheckSummary, renderSelfCheckMarkdown, runSelfCheck } from "./self-check.js";
 import { printSummary, validateControlPlane } from "./validation.js";
 import type {
   RuntimeControlPlane,
@@ -126,7 +134,13 @@ function printHelp(): void {
     "  rotops review [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--quality path] [--discovery-policy path] [--root path] [--out-json path] [--out-md path]",
   );
   console.log(
-    "  rotops validate [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--quality path] [--discovery-policy path] [--root path] [--allow-missing-annotations]",
+    "  rotops self-check [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--quality path] [--discovery-policy path] [--self-check-policy path] [--root path] [--out-json path] [--out-md path]",
+  );
+  console.log(
+    "  rotops retro [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--quality path] [--discovery-policy path] [--self-check-policy path] [--retro path] [--root path] [--out-json path] [--out-md path]",
+  );
+  console.log(
+    "  rotops validate [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--quality path] [--discovery-policy path] [--self-check-policy path] [--retro path] [--root path] [--allow-missing-annotations]",
   );
   console.log(
     "  rotops report [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--quality path] [--discovery-policy path] [--root path] [--allow-missing-annotations]",
@@ -138,7 +152,7 @@ function printHelp(): void {
     "  rotops export vitest-workspace [--config path] [--root path] [--out path] [--alias @=./src]",
   );
   console.log(
-    "  rotops export agent-contract [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--quality path] [--discovery-policy path] [--root path] [--out path] [--review-command cmd] [--impact-command cmd] [--validate-command cmd]",
+    "  rotops export agent-contract [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--quality path] [--discovery-policy path] [--self-check-policy path] [--retro path] [--root path] [--out path] [--review-command cmd] [--impact-command cmd] [--self-check-command cmd] [--retro-command cmd] [--validate-command cmd]",
   );
 }
 
@@ -200,6 +214,8 @@ function validateAndMaybeReport(parsed: ParsedArgs, reportOnly: boolean): void {
     fidelityPolicyPath: getFlag(parsed, "fidelity", DEFAULT_FIDELITY_POLICY_PATH),
     qualityPolicyPath: getFlag(parsed, "quality", DEFAULT_QUALITY_POLICY_PATH),
     discoveryPolicyPath: getFlag(parsed, "discovery-policy", DEFAULT_DISCOVERY_POLICY_PATH),
+    selfCheckPolicyPath: getFlag(parsed, "self-check-policy", DEFAULT_SELF_CHECK_POLICY_PATH),
+    retrospectiveLogPath: getFlag(parsed, "retro", DEFAULT_RETROSPECTIVE_PATH),
   });
   const summary = validateControlPlane(model.controlPlane, repoRoot, {
     requireAnnotations: !hasFlag(parsed, "allow-missing-annotations"),
@@ -248,6 +264,8 @@ function commandImpact(parsed: ParsedArgs): void {
     fidelityPolicyPath: getFlag(parsed, "fidelity", DEFAULT_FIDELITY_POLICY_PATH),
     qualityPolicyPath: getFlag(parsed, "quality", DEFAULT_QUALITY_POLICY_PATH),
     discoveryPolicyPath: getFlag(parsed, "discovery-policy", DEFAULT_DISCOVERY_POLICY_PATH),
+    selfCheckPolicyPath: getFlag(parsed, "self-check-policy", DEFAULT_SELF_CHECK_POLICY_PATH),
+    retrospectiveLogPath: getFlag(parsed, "retro", DEFAULT_RETROSPECTIVE_PATH),
   });
 
   const impact = analyzeImpact(repoRoot, model, changedFiles);
@@ -263,6 +281,8 @@ function commandReview(parsed: ParsedArgs): void {
     fidelityPolicyPath: getFlag(parsed, "fidelity", DEFAULT_FIDELITY_POLICY_PATH),
     qualityPolicyPath: getFlag(parsed, "quality", DEFAULT_QUALITY_POLICY_PATH),
     discoveryPolicyPath: getFlag(parsed, "discovery-policy", DEFAULT_DISCOVERY_POLICY_PATH),
+    selfCheckPolicyPath: getFlag(parsed, "self-check-policy", DEFAULT_SELF_CHECK_POLICY_PATH),
+    retrospectiveLogPath: getFlag(parsed, "retro", DEFAULT_RETROSPECTIVE_PATH),
   });
   const backlog = generateReviewBacklog(repoRoot, model);
   const jsonPath = path.resolve(
@@ -281,6 +301,76 @@ function commandReview(parsed: ParsedArgs): void {
   console.log("");
   console.log(path.relative(repoRoot, jsonPath));
   console.log(path.relative(repoRoot, mdPath));
+}
+
+function commandSelfCheck(parsed: ParsedArgs): void {
+  const repoRoot = resolveRoot(parsed);
+  const model = loadProjectModel(repoRoot, {
+    controlPlanePath: getFlag(parsed, "config", DEFAULT_CONFIG_PATH),
+    inventoryPath: getFlag(parsed, "inventory", DEFAULT_INVENTORY_PATH),
+    surfaceCatalogPath: getFlag(parsed, "surfaces", DEFAULT_SURFACES_PATH),
+    fidelityPolicyPath: getFlag(parsed, "fidelity", DEFAULT_FIDELITY_POLICY_PATH),
+    qualityPolicyPath: getFlag(parsed, "quality", DEFAULT_QUALITY_POLICY_PATH),
+    discoveryPolicyPath: getFlag(parsed, "discovery-policy", DEFAULT_DISCOVERY_POLICY_PATH),
+    selfCheckPolicyPath: getFlag(parsed, "self-check-policy", DEFAULT_SELF_CHECK_POLICY_PATH),
+    retrospectiveLogPath: getFlag(parsed, "retro", DEFAULT_RETROSPECTIVE_PATH),
+  });
+  const summary = runSelfCheck(model);
+  const jsonPath = path.resolve(
+    repoRoot,
+    getFlag(parsed, "out-json", DEFAULT_SELF_CHECK_JSON_PATH) ?? DEFAULT_SELF_CHECK_JSON_PATH,
+  );
+  const mdPath = path.resolve(
+    repoRoot,
+    getFlag(parsed, "out-md", DEFAULT_SELF_CHECK_MD_PATH) ?? DEFAULT_SELF_CHECK_MD_PATH,
+  );
+
+  maybeWriteJson(jsonPath, summary);
+  writeTextFile(mdPath, renderSelfCheckMarkdown(summary));
+
+  printSelfCheckSummary(summary);
+  console.log("");
+  console.log(path.relative(repoRoot, jsonPath));
+  console.log(path.relative(repoRoot, mdPath));
+
+  if (summary.issues.some((issue) => issue.level === "error")) {
+    process.exitCode = 1;
+  }
+}
+
+function commandRetro(parsed: ParsedArgs): void {
+  const repoRoot = resolveRoot(parsed);
+  const model = loadProjectModel(repoRoot, {
+    controlPlanePath: getFlag(parsed, "config", DEFAULT_CONFIG_PATH),
+    inventoryPath: getFlag(parsed, "inventory", DEFAULT_INVENTORY_PATH),
+    surfaceCatalogPath: getFlag(parsed, "surfaces", DEFAULT_SURFACES_PATH),
+    fidelityPolicyPath: getFlag(parsed, "fidelity", DEFAULT_FIDELITY_POLICY_PATH),
+    qualityPolicyPath: getFlag(parsed, "quality", DEFAULT_QUALITY_POLICY_PATH),
+    discoveryPolicyPath: getFlag(parsed, "discovery-policy", DEFAULT_DISCOVERY_POLICY_PATH),
+    selfCheckPolicyPath: getFlag(parsed, "self-check-policy", DEFAULT_SELF_CHECK_POLICY_PATH),
+    retrospectiveLogPath: getFlag(parsed, "retro", DEFAULT_RETROSPECTIVE_PATH),
+  });
+  const summary = analyzeRetrospective(model);
+  const jsonPath = path.resolve(
+    repoRoot,
+    getFlag(parsed, "out-json", DEFAULT_RETROSPECTIVE_JSON_PATH) ?? DEFAULT_RETROSPECTIVE_JSON_PATH,
+  );
+  const mdPath = path.resolve(
+    repoRoot,
+    getFlag(parsed, "out-md", DEFAULT_RETROSPECTIVE_MD_PATH) ?? DEFAULT_RETROSPECTIVE_MD_PATH,
+  );
+
+  maybeWriteJson(jsonPath, summary);
+  writeTextFile(mdPath, renderRetrospectiveMarkdown(summary));
+
+  printRetrospectiveSummary(summary);
+  console.log("");
+  console.log(path.relative(repoRoot, jsonPath));
+  console.log(path.relative(repoRoot, mdPath));
+
+  if (summary.issues.some((issue) => issue.level === "error")) {
+    process.exitCode = 1;
+  }
 }
 
 function commandExportVitestWorkspace(parsed: ParsedArgs): void {
@@ -318,6 +408,8 @@ function commandExportAgentContract(parsed: ParsedArgs): void {
     fidelityPolicyPath: getFlag(parsed, "fidelity", DEFAULT_FIDELITY_POLICY_PATH),
     qualityPolicyPath: getFlag(parsed, "quality", DEFAULT_QUALITY_POLICY_PATH),
     discoveryPolicyPath: getFlag(parsed, "discovery-policy", DEFAULT_DISCOVERY_POLICY_PATH),
+    selfCheckPolicyPath: getFlag(parsed, "self-check-policy", DEFAULT_SELF_CHECK_POLICY_PATH),
+    retrospectiveLogPath: getFlag(parsed, "retro", DEFAULT_RETROSPECTIVE_PATH),
   });
   const controlPlane = loadControlPlane(repoRoot, projectPaths.controlPlanePath);
   const contract = buildRuntimeAgentContract(repoRoot, {
@@ -327,6 +419,8 @@ function commandExportAgentContract(parsed: ParsedArgs): void {
     commandOverrides: {
       review: getFlag(parsed, "review-command"),
       impact: getFlag(parsed, "impact-command"),
+      "self-check": getFlag(parsed, "self-check-command"),
+      retro: getFlag(parsed, "retro-command"),
       validate: getFlag(parsed, "validate-command"),
     },
   });
@@ -367,6 +461,12 @@ function main(): void {
       return;
     case "review":
       commandReview(parsed);
+      return;
+    case "self-check":
+      commandSelfCheck(parsed);
+      return;
+    case "retro":
+      commandRetro(parsed);
       return;
     case "impact":
       commandImpact(parsed);

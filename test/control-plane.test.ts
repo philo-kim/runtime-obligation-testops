@@ -4,11 +4,13 @@ import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:
 import { afterEach, describe, expect, it } from "vitest";
 import {
   analyzeImpact,
+  analyzeRetrospective,
   buildRuntimeAgentContract,
   deriveSurfaceCatalog,
   generateReviewBacklog,
   generateVitestWorkspace,
   initWorkspace,
+  runSelfCheck,
   scanRuntimeInventory,
   validateControlPlane,
 } from "../src/index.js";
@@ -18,6 +20,8 @@ import type {
   RuntimeQualityPolicy,
   RuntimeControlPlane,
   RuntimeInventory,
+  RuntimeRetrospectiveLog,
+  RuntimeSelfCheckPolicy,
 } from "../src/index.js";
 
 const tempDirs: string[] = [];
@@ -141,6 +145,32 @@ function makeQualityPolicy(): RuntimeQualityPolicy {
     surfacePolicies: [],
     inventorySourcePolicies: [],
     behaviorPolicies: [],
+  };
+}
+
+function makeSelfCheckPolicy(): RuntimeSelfCheckPolicy {
+  return {
+    version: "1.0.0",
+    principle: "runtime-obligation-first",
+    requireExplicitInventoryBehaviors: true,
+    requireExplicitBehaviorMappings: true,
+    maxBehaviorsPerOwnerTest: 2,
+    maxOwnerTestsPerBehavior: 2,
+    riskyKindMinimumFidelity: [
+      {
+        kindPattern: "request",
+        minimumFidelity: "contract",
+        level: "warning",
+      },
+    ],
+  };
+}
+
+function makeRetrospectiveLog(): RuntimeRetrospectiveLog {
+  return {
+    version: "1.0.0",
+    principle: "runtime-obligation-first",
+    entries: [],
   };
 }
 
@@ -723,6 +753,143 @@ describe("generateReviewBacklog", () => {
   });
 });
 
+describe("runSelfCheck", () => {
+  it("passes when reviewed behaviors are explicit and mappings stay narrow", () => {
+    const summary = runSelfCheck({
+      controlPlane: {
+        ...makeControlPlane(),
+        behaviors: makeControlPlane().obligations,
+        obligations: undefined,
+      },
+      inventory: makeInventory(),
+      selfCheckPolicy: {
+        ...makeSelfCheckPolicy(),
+        maxBehaviorsPerOwnerTest: 4,
+      },
+    });
+
+    expect(summary.issues).toEqual([
+      expect.objectContaining({
+        level: "warning",
+        code: "risky-kind-fidelity",
+      }),
+    ]);
+  });
+
+  it("reports implicit behavior mappings and overly broad owner tests", () => {
+    const controlPlane = makeControlPlane();
+    const summary = runSelfCheck({
+      controlPlane: {
+        ...controlPlane,
+        behaviors: [
+          {
+            ...controlPlane.obligations[0],
+            inventoryBehaviorIds: undefined,
+          },
+          {
+            ...controlPlane.obligations[0],
+            id: "request-entry.failure",
+            outcomes: ["A response fails."],
+          },
+          {
+            ...controlPlane.obligations[0],
+            id: "request-entry.retry",
+            outcomes: ["A response retries."],
+          },
+        ],
+        obligations: undefined,
+      },
+      inventory: makeInventory(),
+      selfCheckPolicy: makeSelfCheckPolicy(),
+    });
+
+    expect(summary.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          level: "error",
+          code: "implicit-behavior-mapping",
+          behaviorId: "request-entry.success",
+        }),
+        expect.objectContaining({
+          level: "warning",
+          code: "owner-test-too-broad",
+          ownerTest: "test/entry.test.ts",
+        }),
+      ]),
+    );
+  });
+});
+
+describe("analyzeRetrospective", () => {
+  it("passes when no escaped runtime misses remain", () => {
+    const summary = analyzeRetrospective({
+      controlPlane: {
+        ...makeControlPlane(),
+        behaviors: makeControlPlane().obligations,
+        obligations: undefined,
+      },
+      inventory: makeInventory(),
+      retrospectiveLog: makeRetrospectiveLog(),
+    });
+
+    expect(summary.issues).toEqual([]);
+    expect(summary.openEntries).toBe(0);
+  });
+
+  it("fails open retrospective entries and repeated miss patterns", () => {
+    const summary = analyzeRetrospective({
+      controlPlane: {
+        ...makeControlPlane(),
+        behaviors: makeControlPlane().obligations,
+        obligations: undefined,
+      },
+      inventory: makeInventory(),
+      retrospectiveLog: {
+        ...makeRetrospectiveLog(),
+        entries: [
+          {
+            id: "retro-1",
+            title: "Missing request behavior",
+            summary: "A runtime behavior escaped review.",
+            detectedBy: "qa",
+            status: "open",
+            rootCauses: ["missing-reviewed-behavior", "weak-evidence"],
+            inventoryBehaviorIds: ["request-entry.behavior"],
+            behaviorUnitIds: ["request-entry.success"],
+            actions: [],
+          },
+          {
+            id: "retro-2",
+            title: "Same miss family repeated",
+            summary: "The same root cause happened again.",
+            detectedBy: "production",
+            status: "closed",
+            rootCauses: ["missing-reviewed-behavior"],
+            actions: ["Added stronger review rule."],
+          },
+        ],
+      },
+    });
+
+    expect(summary.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          level: "error",
+          entryId: "retro-1",
+        }),
+        expect.objectContaining({
+          level: "warning",
+          message: expect.stringContaining("has no recorded hardening actions"),
+        }),
+        expect.objectContaining({
+          level: "warning",
+          message: expect.stringContaining("missing-reviewed-behavior"),
+        }),
+      ]),
+    );
+  });
+});
+
 describe("buildRuntimeAgentContract", () => {
   it("exports a machine-readable agent workflow contract", () => {
     const root = makeTempDir();
@@ -736,11 +903,15 @@ describe("buildRuntimeAgentContract", () => {
         fidelityPolicyPath: path.join(root, "testops", "fidelity-policy.json"),
         qualityPolicyPath: path.join(root, "testops", "runtime-quality-policy.json"),
         discoveryPolicyPath: path.join(root, "testops", "runtime-discovery-policy.json"),
+        selfCheckPolicyPath: path.join(root, "testops", "runtime-self-check-policy.json"),
+        retrospectiveLogPath: path.join(root, "testops", "runtime-retrospective.json"),
       },
     });
 
     expect(contract.readOrder[0]).toBe("testops/runtime-discovery-policy.json");
     expect(contract.readOrder).toContain("testops/runtime-quality-policy.json");
+    expect(contract.readOrder).toContain("testops/runtime-self-check-policy.json");
+    expect(contract.readOrder).toContain("testops/runtime-retrospective.json");
     expect(contract.systemIdentity).toBe("runtime-behavior-completeness-control-system");
     expect(contract.operatingModel).toContain("AI agents");
     expect(contract.reviewedDecisionMeaning).toContain("semantic treatment");
@@ -761,6 +932,8 @@ describe("buildRuntimeAgentContract", () => {
     expect(contract.requiredCommands.map((command) => command.id)).toEqual([
       "review",
       "impact",
+      "self-check",
+      "retro",
       "validate",
     ]);
     expect(contract.mandatoryLoop).toContain("rerun validate before considering the change complete");
@@ -778,10 +951,14 @@ describe("buildRuntimeAgentContract", () => {
         fidelityPolicyPath: path.join(root, "testing", "fidelity-policy.json"),
         qualityPolicyPath: path.join(root, "testing", "runtime-quality-policy.json"),
         discoveryPolicyPath: path.join(root, "testing", "runtime-discovery-policy.json"),
+        selfCheckPolicyPath: path.join(root, "testing", "runtime-self-check-policy.json"),
+        retrospectiveLogPath: path.join(root, "testing", "runtime-retrospective.json"),
       },
       commandOverrides: {
         review: "npm run test:review",
         impact: "npm run test:impact -- --changed <path>",
+        "self-check": "npm run test:self-check",
+        retro: "npm run test:retro",
         validate: "npm run test:control",
       },
     });
@@ -794,6 +971,14 @@ describe("buildRuntimeAgentContract", () => {
       expect.objectContaining({
         id: "impact",
         command: "npm run test:impact -- --changed <path>",
+      }),
+      expect.objectContaining({
+        id: "self-check",
+        command: "npm run test:self-check",
+      }),
+      expect.objectContaining({
+        id: "retro",
+        command: "npm run test:retro",
       }),
       expect.objectContaining({
         id: "validate",
@@ -814,12 +999,16 @@ describe("initWorkspace", () => {
     expect(existsSync(path.join(root, "testops", "runtime-surfaces.json"))).toBe(true);
     expect(existsSync(path.join(root, "testops", "fidelity-policy.json"))).toBe(true);
     expect(existsSync(path.join(root, "testops", "runtime-quality-policy.json"))).toBe(true);
+    expect(existsSync(path.join(root, "testops", "runtime-self-check-policy.json"))).toBe(true);
+    expect(existsSync(path.join(root, "testops", "runtime-retrospective.json"))).toBe(true);
     expect(existsSync(path.join(root, "testops", "runtime-discovery-policy.json"))).toBe(true);
     expect(existsSync(path.join(root, "testops", "runtime-control-plane.schema.json"))).toBe(true);
     expect(existsSync(path.join(root, "testops", "runtime-inventory.schema.json"))).toBe(true);
     expect(existsSync(path.join(root, "testops", "runtime-surfaces.schema.json"))).toBe(true);
     expect(existsSync(path.join(root, "testops", "fidelity-policy.schema.json"))).toBe(true);
     expect(existsSync(path.join(root, "testops", "runtime-quality-policy.schema.json"))).toBe(true);
+    expect(existsSync(path.join(root, "testops", "runtime-self-check-policy.schema.json"))).toBe(true);
+    expect(existsSync(path.join(root, "testops", "runtime-retrospective.schema.json"))).toBe(true);
     expect(existsSync(path.join(root, "testops", "runtime-discovery-policy.schema.json"))).toBe(true);
     expect(existsSync(path.join(root, ".github", "workflows", "testops-control.yml"))).toBe(true);
     expect(existsSync(path.join(root, "vitest.runtime.workspace.ts"))).toBe(true);

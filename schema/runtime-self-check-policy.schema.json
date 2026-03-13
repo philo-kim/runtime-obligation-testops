@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://runtime-obligation-testops/schema/runtime-self-check-policy.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "principle"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "type": "string" },
+    "principle": { "type": "string" },
+    "requireExplicitInventoryBehaviors": { "type": "boolean" },
+    "requireExplicitBehaviorMappings": { "type": "boolean" },
+    "maxBehaviorsPerOwnerTest": { "type": "integer", "minimum": 1 },
+    "maxOwnerTestsPerBehavior": { "type": "integer", "minimum": 1 },
+    "riskyKindMinimumFidelity": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kindPattern", "minimumFidelity"],
+        "properties": {
+          "kindPattern": { "type": "string" },
+          "minimumFidelity": { "type": "string" },
+          "level": { "type": "string", "enum": ["error", "warning"] }
+        }
+      }
+    }
+  }
+}

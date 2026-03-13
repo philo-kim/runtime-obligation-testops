@@ -24,8 +24,10 @@ Before changing runtime behavior, the agent should read:
 4. `runtime-control-plane.json`
 5. `fidelity-policy.json`
 6. `runtime-quality-policy.json`
-7. `runtime-agent-contract.json` if the repo exports it
-8. `AGENTS.md`
+7. `runtime-self-check-policy.json` if the repo uses self-check
+8. `runtime-retrospective.json` if the repo records escaped misses
+9. `runtime-agent-contract.json` if the repo exports it
+10. `AGENTS.md`
 
 ## Mandatory agent loop
 
@@ -36,12 +38,14 @@ For every runtime change:
 3. compare the change against discovered runtime candidates
 4. run `rotops review` when candidate drift may have changed
 5. review repo-local policy if discovery is too noisy or too blind for that runtime slice
-6. check whether the reviewed model is still granular enough under the quality policy
-7. determine whether the reviewed denominator changed
-8. determine which surface owns the change
-9. update or add reviewed behaviors or implemented behavior units
-10. update owner tests and `runtime-behaviors` annotations
-11. rerun `rotops validate`
+6. run `rotops self-check` to question whether the reviewed model has become too implicit or too broad
+7. check whether the reviewed model is still granular enough under the quality policy
+8. determine whether the reviewed denominator changed
+9. determine which surface owns the change
+10. update or add reviewed behaviors or implemented behavior units
+11. update owner tests and `runtime-behaviors` annotations
+12. if a real miss escaped, record it in `runtime-retrospective.json` and rerun `rotops retro`
+13. rerun `rotops validate`
 
 If discovery finds a candidate the reviewed model does not account for, the agent must not hide it by editing tests alone.
 The agent must either:
@@ -88,6 +92,7 @@ It means the repo still needs semantic approval on one of these questions:
 - is this behavior unit too coarse
 - is this evidence sufficient
 - is this fidelity level strong enough
+- did a real miss escape badly enough that it must become retrospective hardening instead of a one-off fix
 
 Everything else should usually be prepared by AI and policy before review happens.
 

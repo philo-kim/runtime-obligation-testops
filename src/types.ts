@@ -208,6 +208,8 @@ export interface ProjectModel {
   fidelityPolicy?: FidelityPolicy;
   qualityPolicy?: RuntimeQualityPolicy;
   discoveryPolicy?: RuntimeDiscoveryPolicy;
+  selfCheckPolicy?: RuntimeSelfCheckPolicy;
+  retrospectiveLog?: RuntimeRetrospectiveLog;
 }
 
 export interface ValidationIssue {
@@ -290,6 +292,105 @@ export interface ReviewBacklog {
   candidates: ReviewCandidate[];
 }
 
+export interface RiskyKindFidelityRule {
+  kindPattern: string;
+  minimumFidelity: string;
+  level?: "error" | "warning";
+}
+
+export interface RuntimeSelfCheckPolicy {
+  $schema?: string;
+  version: string;
+  principle: string;
+  requireExplicitInventoryBehaviors?: boolean;
+  requireExplicitBehaviorMappings?: boolean;
+  maxBehaviorsPerOwnerTest?: number;
+  maxOwnerTestsPerBehavior?: number;
+  riskyKindMinimumFidelity?: RiskyKindFidelityRule[];
+}
+
+export interface SelfCheckIssue {
+  level: "error" | "warning";
+  code: string;
+  message: string;
+  inventoryBehaviorId?: string;
+  behaviorId?: string;
+  ownerTest?: string;
+}
+
+export interface SelfCheckSummary {
+  principle: string;
+  version: string;
+  explicitInventoryBehaviors: boolean;
+  inventoryBehaviors: number;
+  behaviorUnits: number;
+  ownerTests: number;
+  issues: SelfCheckIssue[];
+}
+
+export type RetrospectiveDetectedBy =
+  | "qa"
+  | "production"
+  | "support"
+  | "developer"
+  | "agent"
+  | "test-failure";
+
+export type RetrospectiveStatus = "open" | "hardened" | "closed";
+
+export type RetrospectiveRootCause =
+  | "missing-reviewed-behavior"
+  | "coarse-behavior-unit"
+  | "weak-evidence"
+  | "weak-fidelity"
+  | "missing-owner-test"
+  | "scanner-blind-spot"
+  | "suppression-mistake"
+  | "state-transition-gap"
+  | "persistence-gap"
+  | "background-gap";
+
+export interface RuntimeRetrospectiveEntry {
+  id: string;
+  title: string;
+  summary: string;
+  detectedBy: RetrospectiveDetectedBy;
+  status: RetrospectiveStatus;
+  rootCauses: RetrospectiveRootCause[];
+  inventoryBehaviorIds?: string[];
+  behaviorUnitIds?: string[];
+  actions?: string[];
+}
+
+export interface RuntimeRetrospectiveLog {
+  $schema?: string;
+  version: string;
+  principle: string;
+  entries: RuntimeRetrospectiveEntry[];
+}
+
+export interface RuntimeRetrospectiveRecurringCause {
+  rootCause: RetrospectiveRootCause;
+  count: number;
+}
+
+export interface RuntimeRetrospectiveIssue {
+  level: "error" | "warning";
+  entryId?: string;
+  message: string;
+}
+
+export interface RuntimeRetrospectiveSummary {
+  principle: string;
+  version: string;
+  entries: number;
+  openEntries: number;
+  hardenedEntries: number;
+  closedEntries: number;
+  recurringRootCauses: RuntimeRetrospectiveRecurringCause[];
+  issues: RuntimeRetrospectiveIssue[];
+}
+
 export interface RuntimeActorRole {
   id: string;
   responsibility: string;
@@ -310,9 +411,11 @@ export interface ArtifactPathMap {
   fidelityPolicyPath: string;
   qualityPolicyPath: string;
   discoveryPolicyPath: string;
+  selfCheckPolicyPath?: string;
+  retrospectiveLogPath?: string;
 }
 
-export type AgentCommandId = "review" | "impact" | "validate";
+export type AgentCommandId = "review" | "impact" | "self-check" | "retro" | "validate";
 
 export interface AgentCommand {
   id: AgentCommandId;

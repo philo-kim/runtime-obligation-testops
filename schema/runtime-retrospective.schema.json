@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://runtime-obligation-testops/schema/runtime-retrospective.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "principle", "entries"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "type": "string" },
+    "principle": { "type": "string" },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "summary", "detectedBy", "status", "rootCauses"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "summary": { "type": "string" },
+          "detectedBy": {
+            "type": "string",
+            "enum": ["qa", "production", "support", "developer", "agent", "test-failure"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["open", "hardened", "closed"]
+          },
+          "rootCauses": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "missing-reviewed-behavior",
+                "coarse-behavior-unit",
+                "weak-evidence",
+                "weak-fidelity",
+                "missing-owner-test",
+                "scanner-blind-spot",
+                "suppression-mistake",
+                "state-transition-gap",
+                "persistence-gap",
+                "background-gap"
+              ]
+            }
+          },
+          "inventoryBehaviorIds": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "behaviorUnitIds": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "actions": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

@@ -12,6 +12,12 @@ function relativeArtifactPaths(
     fidelityPolicyPath: path.relative(repoRoot, artifactPaths.fidelityPolicyPath) || ".",
     qualityPolicyPath: path.relative(repoRoot, artifactPaths.qualityPolicyPath) || ".",
     discoveryPolicyPath: path.relative(repoRoot, artifactPaths.discoveryPolicyPath) || ".",
+    selfCheckPolicyPath: artifactPaths.selfCheckPolicyPath
+      ? path.relative(repoRoot, artifactPaths.selfCheckPolicyPath) || "."
+      : undefined,
+    retrospectiveLogPath: artifactPaths.retrospectiveLogPath
+      ? path.relative(repoRoot, artifactPaths.retrospectiveLogPath) || "."
+      : undefined,
   };
 }
 
@@ -36,6 +42,18 @@ export function buildRuntimeAgentContract(
       id: "impact",
       command: "rotops impact --changed <path>",
       purpose: "Map changed runtime files to reviewed inventory sources, surfaces, behavior units, and owner tests.",
+      blocking: false,
+    },
+    {
+      id: "self-check",
+      command: "rotops self-check",
+      purpose: "Challenge the reviewed runtime model itself for coarse proof boundaries, implicit mappings, and risky weak-fidelity assumptions.",
+      blocking: false,
+    },
+    {
+      id: "retro",
+      command: "rotops retro",
+      purpose: "Fail when escaped runtime misses remain open or retrospective hardening has not been linked back into the reviewed model.",
       blocking: false,
     },
     {
@@ -95,6 +113,18 @@ export function buildRuntimeAgentContract(
         blocking: false,
       },
       {
+        id: "self-check",
+        meaning: "The reviewed model is challenged for hidden coarse behavior units, implicit mappings, and weak proof assumptions.",
+        primary: true,
+        blocking: false,
+      },
+      {
+        id: "retrospective-feedback",
+        meaning: "Escaped runtime misses are fed back into the reviewed behavior system instead of being forgotten after incident review.",
+        primary: true,
+        blocking: false,
+      },
+      {
         id: "completeness-validation",
         meaning: "The reviewed runtime model satisfies completeness, traceability, fidelity, and granularity rules.",
         primary: true,
@@ -115,6 +145,8 @@ export function buildRuntimeAgentContract(
       artifactPaths.controlPlanePath,
       artifactPaths.fidelityPolicyPath,
       artifactPaths.qualityPolicyPath,
+      ...(artifactPaths.selfCheckPolicyPath ? [artifactPaths.selfCheckPolicyPath] : []),
+      ...(artifactPaths.retrospectiveLogPath ? [artifactPaths.retrospectiveLogPath] : []),
       "AGENTS.md",
     ],
     mandatoryLoop: [
@@ -122,7 +154,9 @@ export function buildRuntimeAgentContract(
       "run impact analysis or equivalent changed-file mapping",
       "compare discovered candidates against the reviewed model",
       "update repo-local discovery policy if the scanner is noisy or blind for this slice",
+      "run self-check to challenge whether reviewed behavior mappings are still explicit enough and whether risky fidelity assumptions have slipped in",
       "check whether reviewed-model granularity still satisfies runtime-quality-policy",
+      "if a real miss escaped, record it in the retrospective log and harden the model or policies before calling the work complete",
       "let AI update inventory, surfaces, behavior units, evidence, annotations, and owner tests before asking for reviewed approval",
       "escalate only semantic approval decisions instead of manual bookkeeping",
       "rerun validate before considering the change complete",

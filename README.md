@@ -145,10 +145,15 @@ The package manages six connected artifacts:
   - the minimum proof strength required by surface, source, or behavior unit
 - `runtime-quality-policy.json`
   - reviewed-model quality gates that flag overly broad sources or behavior units
+- `runtime-self-check-policy.json`
+  - rules that challenge the reviewed model itself for implicit mappings, diffuse proof ownership, and risky weak-fidelity assumptions
+- `runtime-retrospective.json`
+  - escaped runtime misses and the hardening actions that must feed them back into the reviewed model
 
 The first artifact manages discovery.
 The next four artifacts are the reviewed runtime model.
-The final artifact governs whether that reviewed model is still granular enough to trust.
+The next artifact questions whether that reviewed model is explicit enough to trust.
+The final artifact records escaped misses so they harden future review instead of being forgotten after QA or incidents.
 
 `runtime-obligation-testops` keeps its historical name, but the preferred proof unit is now the `runtime behavior unit`.
 Legacy `obligations` remain supported for backward compatibility and are interpreted as behavior units by the validator.
@@ -293,6 +298,8 @@ npx rotops init
 npx rotops inventory scan
 npx rotops surfaces derive
 npx rotops review
+npx rotops self-check
+npx rotops retro
 npx rotops validate
 npx rotops report
 npx rotops impact --changed src/path/to/file.ts
@@ -305,6 +312,8 @@ If your repo wraps `rotops` behind project-local scripts, export the agent contr
 ```bash
 npx rotops export agent-contract \
   --review-command "npm run test:review" \
+  --self-check-command "npm run test:self-check" \
+  --retro-command "npm run test:retro" \
   --impact-command "npm run test:impact -- --changed <path>" \
   --validate-command "npm run test:control"
 ```
@@ -325,6 +334,16 @@ It can express rules such as:
 Fidelity policy governs proof strength.
 Quality policy governs proof granularity.
 
+`runtime-self-check-policy.json` governs whether the reviewed model is still explicit enough to trust.
+
+It can express rules such as:
+
+- whether inventory behaviors must be explicit instead of synthesized
+- whether behavior units must explicitly name reviewed inventory behaviors
+- maximum runtime behaviors one owner test may claim
+- maximum owner tests one behavior unit may diffuse across
+- minimum fidelity for risky source kinds
+
 ## Recommended bootstrap strategy
 
 Do not assume every repo should start in strict discovery mode.
@@ -335,7 +354,9 @@ The safe sequence is:
 2. keep discovery scoped to the slice you actually intend to manage first
 3. use `rotops validate` and `rotops impact` as the first CI gate
 4. use `rotops review` to keep discovered candidates visible while repo-local policy is still being shaped
-5. move discovery drift to `error` once the scanner is trustworthy for that repo
+5. add `rotops self-check` once the denominator is explicit enough to question its own granularity
+6. add `rotops retro` once escaped runtime misses should harden the model automatically
+7. move discovery drift to `error` once the scanner is trustworthy for that repo
 
 That rollout works better than pretending heuristics are already perfect.
 
@@ -354,6 +375,8 @@ sequenceDiagram
   AI->>Repo: accept / suppress / defer
   AI->>Repo: update inventory / surfaces / behaviors / owner tests
   AI->>R: review
+  AI->>R: self-check
+  AI->>R: retro
   AI->>R: validate
   AI->>R: runtime tests
   AI->>R: code coverage (secondary)
@@ -369,8 +392,9 @@ sequenceDiagram
 4. Accept the reviewed denominator in `runtime-inventory.json`.
 5. Derive or refine runtime surfaces in `runtime-surfaces.json`.
 6. Register reviewed behaviors, implemented behavior units, evidence, fidelity, and owner tests in `runtime-control-plane.json`.
-7. Export the machine-readable agent contract for local tooling or CI.
-8. Run `validate` before the main test suite.
+7. Add self-check and retrospective policy once the reviewed model is stable enough to challenge itself.
+8. Export the machine-readable agent contract for local tooling or CI.
+9. Run `self-check`, `retro`, and `validate` before the main test suite.
 
 ## What `validate` checks
 
@@ -384,6 +408,17 @@ sequenceDiagram
 - fidelity does not regress below policy
 - discovered runtime files are not missing from the reviewed denominator
 
+## What `self-check` and `retro` add
+
+- `rotops self-check`
+  - questions the reviewed model itself instead of only checking declared consistency
+  - catches implicit behavior mappings and overly broad owner-test claims
+  - flags weak proof assumptions for risky source kinds
+- `rotops retro`
+  - records escaped runtime misses so they cannot disappear after QA or incident response
+  - fails when open retrospective entries still exist
+  - warns when the same miss pattern keeps recurring and should become a stronger rule
+
 ## AI operating model
 
 This package is designed for AI coding agents as much as for humans.
@@ -394,10 +429,12 @@ The expected loop is:
 2. run `rotops impact`
 3. run `rotops review` when denominator drift may have changed
 4. compare discovered candidates to the reviewed model
-5. accept, suppress, or continue reviewing candidate drift through repo-local policy
-6. update reviewed behaviors and owner tests
-7. export or refresh the machine-readable runtime agent contract when project paths or process changed
-8. rerun `rotops validate`
+5. run `rotops self-check` so the reviewed model itself is challenged for hidden coarseness
+6. accept, suppress, or continue reviewing candidate drift through repo-local policy
+7. update reviewed behaviors and owner tests
+8. record escaped misses in `runtime-retrospective.json` and run `rotops retro` when a miss should harden the system
+9. export or refresh the machine-readable runtime agent contract when project paths or process changed
+10. rerun `rotops validate`
 
 The control system exists so an agent cannot “solve” testing by only adding lines of test code.
 The agent has to maintain the runtime model too.

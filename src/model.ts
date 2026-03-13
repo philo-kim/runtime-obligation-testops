@@ -6,6 +6,8 @@ import {
   DEFAULT_FIDELITY_POLICY_PATH,
   DEFAULT_INVENTORY_PATH,
   DEFAULT_QUALITY_POLICY_PATH,
+  DEFAULT_RETROSPECTIVE_PATH,
+  DEFAULT_SELF_CHECK_POLICY_PATH,
   DEFAULT_SURFACES_PATH,
 } from "./constants.js";
 import type {
@@ -15,6 +17,8 @@ import type {
   RuntimeControlPlane,
   RuntimeInventory,
   RuntimeQualityPolicy,
+  RuntimeRetrospectiveLog,
+  RuntimeSelfCheckPolicy,
   RuntimeSurfaceCatalog,
 } from "./types.js";
 
@@ -25,6 +29,8 @@ export interface ProjectPathOptions {
   fidelityPolicyPath?: string;
   qualityPolicyPath?: string;
   discoveryPolicyPath?: string;
+  selfCheckPolicyPath?: string;
+  retrospectiveLogPath?: string;
 }
 
 export interface ResolvedProjectPaths {
@@ -34,6 +40,8 @@ export interface ResolvedProjectPaths {
   fidelityPolicyPath: string;
   qualityPolicyPath: string;
   discoveryPolicyPath: string;
+  selfCheckPolicyPath: string;
+  retrospectiveLogPath: string;
 }
 
 function resolvePath(root: string, filePath: string): string {
@@ -73,6 +81,14 @@ export function resolveProjectPaths(
       repoRoot,
       options.discoveryPolicyPath ?? DEFAULT_DISCOVERY_POLICY_PATH,
     ),
+    selfCheckPolicyPath: resolvePath(
+      repoRoot,
+      options.selfCheckPolicyPath ?? DEFAULT_SELF_CHECK_POLICY_PATH,
+    ),
+    retrospectiveLogPath: resolvePath(
+      repoRoot,
+      options.retrospectiveLogPath ?? DEFAULT_RETROSPECTIVE_PATH,
+    ),
   };
 }
 
@@ -98,6 +114,12 @@ export function loadProjectModel(
   const discoveryPolicy = existsSync(paths.discoveryPolicyPath)
     ? readJsonFile<RuntimeDiscoveryPolicy>(paths.discoveryPolicyPath)
     : undefined;
+  const selfCheckPolicy = existsSync(paths.selfCheckPolicyPath)
+    ? readJsonFile<RuntimeSelfCheckPolicy>(paths.selfCheckPolicyPath)
+    : undefined;
+  const retrospectiveLog = existsSync(paths.retrospectiveLogPath)
+    ? readJsonFile<RuntimeRetrospectiveLog>(paths.retrospectiveLogPath)
+    : undefined;
 
   return {
     controlPlane,
@@ -106,5 +128,7 @@ export function loadProjectModel(
     fidelityPolicy,
     qualityPolicy,
     discoveryPolicy,
+    selfCheckPolicy,
+    retrospectiveLog,
   };
 }
