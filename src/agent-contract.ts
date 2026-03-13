@@ -57,6 +57,12 @@ export function buildRuntimeAgentContract(
       blocking: false,
     },
     {
+      id: "doctor",
+      command: "rotops doctor",
+      purpose: "Verify that the repository is actually wired to the declared runtime-completeness package version and control artifacts.",
+      blocking: true,
+    },
+    {
       id: "validate",
       command: "rotops validate",
       purpose: "Enforce completeness, traceability, fidelity, and granularity gates for the reviewed runtime model.",
@@ -131,6 +137,12 @@ export function buildRuntimeAgentContract(
         blocking: true,
       },
       {
+        id: "installation-consistency",
+        meaning: "The installed package and local artifact set actually match the reviewed runtime-completeness setup declared by the repository.",
+        primary: true,
+        blocking: true,
+      },
+      {
         id: "code-coverage",
         meaning: "Secondary code-execution metric only; never a runtime-completeness claim.",
         primary: false,
@@ -151,6 +163,7 @@ export function buildRuntimeAgentContract(
     ],
     mandatoryLoop: [
       "identify the changed runtime source",
+      "run doctor or equivalent installation-consistency checks before trusting local completeness results",
       "run impact analysis or equivalent changed-file mapping",
       "compare discovered candidates against the reviewed model",
       "update repo-local discovery policy if the scanner is noisy or blind for this slice",

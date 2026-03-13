@@ -24,6 +24,44 @@
           "level": { "type": "string", "enum": ["error", "warning"] }
         }
       }
+    },
+    "kindExpectationRules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kindPattern"],
+        "properties": {
+          "kindPattern": { "type": "string" },
+          "requiredOutcomeClasses": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "requiredEvidence": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "level": { "type": "string", "enum": ["error", "warning"] }
+        }
+      }
+    },
+    "fidelityOwnerTestRules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["minimumFidelity", "requireOwnerTestPatterns"],
+        "properties": {
+          "minimumFidelity": { "type": "string" },
+          "kindPattern": { "type": "string" },
+          "requireOwnerTestPatterns": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          },
+          "level": { "type": "string", "enum": ["error", "warning"] }
+        }
+      }
     }
   }
 }

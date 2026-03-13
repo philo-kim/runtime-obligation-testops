@@ -297,6 +297,7 @@ Then run the CLI:
 npx rotops init
 npx rotops inventory scan
 npx rotops surfaces derive
+npx rotops doctor
 npx rotops review
 npx rotops self-check
 npx rotops retro
@@ -314,6 +315,7 @@ npx rotops export agent-contract \
   --review-command "npm run test:review" \
   --self-check-command "npm run test:self-check" \
   --retro-command "npm run test:retro" \
+  --doctor-command "npm run test:doctor" \
   --impact-command "npm run test:impact -- --changed <path>" \
   --validate-command "npm run test:control"
 ```
@@ -343,6 +345,9 @@ It can express rules such as:
 - maximum runtime behaviors one owner test may claim
 - maximum owner tests one behavior unit may diffuse across
 - minimum fidelity for risky source kinds
+- required outcome classes for risky source kinds
+- required evidence for risky source kinds
+- owner-test proof patterns for higher-fidelity claims
 
 ## Recommended bootstrap strategy
 
@@ -353,10 +358,11 @@ The safe sequence is:
 1. start with a reviewed model for one important runtime slice
 2. keep discovery scoped to the slice you actually intend to manage first
 3. use `rotops validate` and `rotops impact` as the first CI gate
-4. use `rotops review` to keep discovered candidates visible while repo-local policy is still being shaped
-5. add `rotops self-check` once the denominator is explicit enough to question its own granularity
-6. add `rotops retro` once escaped runtime misses should harden the model automatically
-7. move discovery drift to `error` once the scanner is trustworthy for that repo
+4. add `rotops doctor` so stale installs or missing control artifacts do not fake a clean result
+5. use `rotops review` to keep discovered candidates visible while repo-local policy is still being shaped
+6. add `rotops self-check` once the denominator is explicit enough to question its own granularity
+7. add `rotops retro` once escaped runtime misses should harden the model automatically
+8. move discovery drift to `error` once the scanner is trustworthy for that repo
 
 That rollout works better than pretending heuristics are already perfect.
 
@@ -394,7 +400,7 @@ sequenceDiagram
 6. Register reviewed behaviors, implemented behavior units, evidence, fidelity, and owner tests in `runtime-control-plane.json`.
 7. Add self-check and retrospective policy once the reviewed model is stable enough to challenge itself.
 8. Export the machine-readable agent contract for local tooling or CI.
-9. Run `self-check`, `retro`, and `validate` before the main test suite.
+9. Run `doctor`, `self-check`, `retro`, and `validate` before the main test suite.
 
 ## What `validate` checks
 
@@ -414,10 +420,14 @@ sequenceDiagram
   - questions the reviewed model itself instead of only checking declared consistency
   - catches implicit behavior mappings and overly broad owner-test claims
   - flags weak proof assumptions for risky source kinds
+  - can require outcome/evidence closure for whole source kinds instead of trusting broad behavior wording
 - `rotops retro`
   - records escaped runtime misses so they cannot disappear after QA or incident response
   - fails when open retrospective entries still exist
   - warns when the same miss pattern keeps recurring and should become a stronger rule
+- `rotops doctor`
+  - verifies that the installed package, lockfile, and local runtime artifacts actually match the reviewed setup
+  - catches stale installs before completeness results are trusted
 
 ## AI operating model
 
@@ -426,15 +436,16 @@ This package is designed for AI coding agents as much as for humans.
 The expected loop is:
 
 1. detect changed runtime files
-2. run `rotops impact`
-3. run `rotops review` when denominator drift may have changed
-4. compare discovered candidates to the reviewed model
-5. run `rotops self-check` so the reviewed model itself is challenged for hidden coarseness
-6. accept, suppress, or continue reviewing candidate drift through repo-local policy
-7. update reviewed behaviors and owner tests
-8. record escaped misses in `runtime-retrospective.json` and run `rotops retro` when a miss should harden the system
-9. export or refresh the machine-readable runtime agent contract when project paths or process changed
-10. rerun `rotops validate`
+2. run `rotops doctor`
+3. run `rotops impact`
+4. run `rotops review` when denominator drift may have changed
+5. compare discovered candidates to the reviewed model
+6. run `rotops self-check` so the reviewed model itself is challenged for hidden coarseness
+7. accept, suppress, or continue reviewing candidate drift through repo-local policy
+8. update reviewed behaviors and owner tests
+9. record escaped misses in `runtime-retrospective.json` and run `rotops retro` when a miss should harden the system
+10. export or refresh the machine-readable runtime agent contract when project paths or process changed
+11. rerun `rotops validate`
 
 The control system exists so an agent cannot “solve” testing by only adding lines of test code.
 The agent has to maintain the runtime model too.

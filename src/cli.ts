@@ -5,6 +5,8 @@ import {
   DEFAULT_AGENT_CONTRACT_PATH,
   DEFAULT_CONFIG_PATH,
   DEFAULT_DISCOVERY_POLICY_PATH,
+  DEFAULT_DOCTOR_JSON_PATH,
+  DEFAULT_DOCTOR_MD_PATH,
   DEFAULT_FIDELITY_POLICY_PATH,
   DEFAULT_INVENTORY_PATH,
   DEFAULT_QUALITY_POLICY_PATH,
@@ -23,6 +25,7 @@ import {
 import { generateVitestWorkspace } from "./adapters/vitest.js";
 import { buildRuntimeAgentContract } from "./agent-contract.js";
 import { deriveSurfaceCatalog } from "./derivation.js";
+import { printDoctorSummary, renderDoctorMarkdown, runDoctor } from "./doctor.js";
 import { writeTextFile } from "./fs-utils.js";
 import { analyzeImpact } from "./impact.js";
 import { initWorkspace } from "./init.js";
@@ -140,6 +143,9 @@ function printHelp(): void {
     "  rotops retro [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--quality path] [--discovery-policy path] [--self-check-policy path] [--retro path] [--root path] [--out-json path] [--out-md path]",
   );
   console.log(
+    "  rotops doctor [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--quality path] [--discovery-policy path] [--self-check-policy path] [--retro path] [--root path] [--out-json path] [--out-md path]",
+  );
+  console.log(
     "  rotops validate [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--quality path] [--discovery-policy path] [--self-check-policy path] [--retro path] [--root path] [--allow-missing-annotations]",
   );
   console.log(
@@ -152,7 +158,7 @@ function printHelp(): void {
     "  rotops export vitest-workspace [--config path] [--root path] [--out path] [--alias @=./src]",
   );
   console.log(
-    "  rotops export agent-contract [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--quality path] [--discovery-policy path] [--self-check-policy path] [--retro path] [--root path] [--out path] [--review-command cmd] [--impact-command cmd] [--self-check-command cmd] [--retro-command cmd] [--validate-command cmd]",
+    "  rotops export agent-contract [--config path] [--inventory path] [--surfaces path] [--fidelity path] [--quality path] [--discovery-policy path] [--self-check-policy path] [--retro path] [--root path] [--out path] [--review-command cmd] [--impact-command cmd] [--self-check-command cmd] [--retro-command cmd] [--doctor-command cmd] [--validate-command cmd]",
   );
 }
 
@@ -240,6 +246,41 @@ function validateAndMaybeReport(parsed: ParsedArgs, reportOnly: boolean): void {
     console.log(path.relative(repoRoot, reports.jsonPath));
     console.log(path.relative(repoRoot, reports.mdPath));
   }
+
+  if (summary.issues.some((issue) => issue.level === "error")) {
+    process.exitCode = 1;
+  }
+}
+
+function commandDoctor(parsed: ParsedArgs): void {
+  const repoRoot = resolveRoot(parsed);
+  const projectPaths = resolveProjectPaths(repoRoot, {
+    controlPlanePath: getFlag(parsed, "config", DEFAULT_CONFIG_PATH),
+    inventoryPath: getFlag(parsed, "inventory", DEFAULT_INVENTORY_PATH),
+    surfaceCatalogPath: getFlag(parsed, "surfaces", DEFAULT_SURFACES_PATH),
+    fidelityPolicyPath: getFlag(parsed, "fidelity", DEFAULT_FIDELITY_POLICY_PATH),
+    qualityPolicyPath: getFlag(parsed, "quality", DEFAULT_QUALITY_POLICY_PATH),
+    discoveryPolicyPath: getFlag(parsed, "discovery-policy", DEFAULT_DISCOVERY_POLICY_PATH),
+    selfCheckPolicyPath: getFlag(parsed, "self-check-policy", DEFAULT_SELF_CHECK_POLICY_PATH),
+    retrospectiveLogPath: getFlag(parsed, "retro", DEFAULT_RETROSPECTIVE_PATH),
+  });
+  const summary = runDoctor(repoRoot, projectPaths);
+  const jsonPath = path.resolve(
+    repoRoot,
+    getFlag(parsed, "out-json", DEFAULT_DOCTOR_JSON_PATH) ?? DEFAULT_DOCTOR_JSON_PATH,
+  );
+  const mdPath = path.resolve(
+    repoRoot,
+    getFlag(parsed, "out-md", DEFAULT_DOCTOR_MD_PATH) ?? DEFAULT_DOCTOR_MD_PATH,
+  );
+
+  maybeWriteJson(jsonPath, summary);
+  writeTextFile(mdPath, renderDoctorMarkdown(summary));
+
+  printDoctorSummary(summary);
+  console.log("");
+  console.log(path.relative(repoRoot, jsonPath));
+  console.log(path.relative(repoRoot, mdPath));
 
   if (summary.issues.some((issue) => issue.level === "error")) {
     process.exitCode = 1;
@@ -421,6 +462,7 @@ function commandExportAgentContract(parsed: ParsedArgs): void {
       impact: getFlag(parsed, "impact-command"),
       "self-check": getFlag(parsed, "self-check-command"),
       retro: getFlag(parsed, "retro-command"),
+      doctor: getFlag(parsed, "doctor-command"),
       validate: getFlag(parsed, "validate-command"),
     },
   });
@@ -467,6 +509,9 @@ function main(): void {
       return;
     case "retro":
       commandRetro(parsed);
+      return;
+    case "doctor":
+      commandDoctor(parsed);
       return;
     case "impact":
       commandImpact(parsed);

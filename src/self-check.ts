@@ -1,5 +1,7 @@
 import { getInventoryBehaviors } from "./inventory-behaviors.js";
 import type {
+  FidelityOwnerTestRule,
+  KindBehaviorExpectationRule,
   ProjectModel,
   RiskyKindFidelityRule,
   RuntimeBehaviorUnit,
@@ -15,6 +17,86 @@ function getBehaviorUnits(model: ProjectModel): RuntimeBehaviorUnit[] {
 
 function getFidelityRank(model: ProjectModel, fidelity: string): number {
   return model.controlPlane.fidelityLevels.indexOf(fidelity);
+}
+
+function parseOutcomeClasses(behavior: RuntimeBehaviorUnit): string[] {
+  if (behavior.outcomeClasses && behavior.outcomeClasses.length > 0) {
+    return [...new Set(behavior.outcomeClasses)].sort();
+  }
+
+  const classes = new Set<string>();
+
+  for (const outcome of behavior.outcomes) {
+    const normalized = outcome.toLowerCase();
+    if (
+      /\bsuccess\b|\bcontinue\b|\bprocessed\b|\bcreated\b|\bloaded\b|\brendered\b|\baccepted\b|\battached\b/.test(
+        normalized,
+      )
+    ) {
+      classes.add("success");
+    }
+    if (/\bredirect\b/.test(normalized)) {
+      classes.add("redirect");
+    }
+    if (/\binvalid\b|\bvalidation\b|\bmissing\b|\bbad request\b/.test(normalized)) {
+      classes.add("validation_error");
+    }
+    if (/\bunauthenticated\b|\bunauthorized\b|\bforbidden\b|\bauth\b/.test(normalized)) {
+      classes.add("auth_denied");
+    }
+    if (/\bnot found\b|\babsent\b|\bno app\b/.test(normalized)) {
+      classes.add("not_found");
+    }
+    if (/\bduplicate\b|\bidempotent\b|\balready\b|\bexactly once\b/.test(normalized)) {
+      classes.add("duplicate");
+    }
+    if (/\btimeout\b|\btimed out\b/.test(normalized)) {
+      classes.add("timeout");
+    }
+    if (/\bretry\b|\bre-enqueue\b/.test(normalized)) {
+      classes.add("retry");
+    }
+    if (/\bskip\b|\bskipped\b|\bno changes\b/.test(normalized)) {
+      classes.add("skipped");
+    }
+    if (/\bpartial\b/.test(normalized)) {
+      classes.add("partial");
+    }
+    if (/\bfail\b|\berror\b|\breject\b/.test(normalized)) {
+      classes.add("failure");
+    }
+    if (/\bprovider\b|\bupstream\b|\brate limit\b/.test(normalized)) {
+      classes.add("provider_failure");
+    }
+    if (/\bschema\b|\bshape\b|\bdrift\b|\bparse\b/.test(normalized)) {
+      classes.add("schema_drift");
+    }
+  }
+
+  return [...classes].sort();
+}
+
+function matchesKindRule(kinds: string[], kindPattern: string): boolean {
+  try {
+    const regex = new RegExp(kindPattern);
+    return kinds.some((kind) => regex.test(kind));
+  } catch {
+    return false;
+  }
+}
+
+function maybeAddInvalidPatternIssue(
+  issues: SelfCheckIssue[],
+  behaviorId: string,
+  code: string,
+  message: string,
+): void {
+  issues.push({
+    level: "warning",
+    code,
+    message,
+    behaviorId,
+  });
 }
 
 function sourceKindsForBehavior(
@@ -84,6 +166,98 @@ function maybeAddRiskyKindFidelityIssue(
   });
 }
 
+function maybeAddKindExpectationIssues(
+  issues: SelfCheckIssue[],
+  behavior: RuntimeBehaviorUnit,
+  kinds: string[],
+  rule: KindBehaviorExpectationRule,
+): void {
+  let regex: RegExp;
+
+  try {
+    regex = new RegExp(rule.kindPattern);
+  } catch {
+    maybeAddInvalidPatternIssue(
+      issues,
+      behavior.id,
+      "invalid-kind-expectation-pattern",
+      `Self-check kindExpectationRules pattern ${rule.kindPattern} is not a valid regular expression.`,
+    );
+    return;
+  }
+
+  if (!kinds.some((kind) => regex.test(kind))) {
+    return;
+  }
+
+  const observedOutcomeClasses = parseOutcomeClasses(behavior);
+  const observedEvidence = [...new Set(behavior.evidence)];
+
+  for (const outcomeClass of rule.requiredOutcomeClasses ?? []) {
+    if (!observedOutcomeClasses.includes(outcomeClass)) {
+      issues.push({
+        level: rule.level ?? "warning",
+        code: "missing-kind-outcome-class",
+        message: `Behavior ${behavior.id} is backed by source kinds [${kinds.join(", ")}] but is missing required outcome class ${outcomeClass}.`,
+        behaviorId: behavior.id,
+      });
+    }
+  }
+
+  for (const evidence of rule.requiredEvidence ?? []) {
+    if (!observedEvidence.includes(evidence)) {
+      issues.push({
+        level: rule.level ?? "warning",
+        code: "missing-kind-evidence",
+        message: `Behavior ${behavior.id} is backed by source kinds [${kinds.join(", ")}] but is missing required evidence ${evidence}.`,
+        behaviorId: behavior.id,
+      });
+    }
+  }
+}
+
+function maybeAddOwnerTestPatternIssue(
+  issues: SelfCheckIssue[],
+  model: ProjectModel,
+  behavior: RuntimeBehaviorUnit,
+  kinds: string[],
+  rule: FidelityOwnerTestRule,
+): void {
+  if (getFidelityRank(model, behavior.fidelity) < getFidelityRank(model, rule.minimumFidelity)) {
+    return;
+  }
+
+  if (rule.kindPattern && !matchesKindRule(kinds, rule.kindPattern)) {
+    return;
+  }
+
+  const ownerTests = behavior.ownerTests ?? [];
+  const hasMatch = ownerTests.some((ownerTest) =>
+    rule.requireOwnerTestPatterns.some((pattern) => {
+      try {
+        return new RegExp(pattern).test(ownerTest);
+      } catch {
+        maybeAddInvalidPatternIssue(
+          issues,
+          behavior.id,
+          "invalid-owner-test-pattern",
+          `Self-check fidelityOwnerTestRules pattern ${pattern} is not a valid regular expression.`,
+        );
+        return false;
+      }
+    }),
+  );
+
+  if (!hasMatch) {
+    issues.push({
+      level: rule.level ?? "warning",
+      code: "owner-test-pattern-mismatch",
+      message: `Behavior ${behavior.id} claims fidelity ${behavior.fidelity} but none of its owner tests match the required proof patterns [${rule.requireOwnerTestPatterns.join(", ")}].`,
+      behaviorId: behavior.id,
+    });
+  }
+}
+
 export function runSelfCheck(model: ProjectModel): SelfCheckSummary {
   const issues: SelfCheckIssue[] = [];
   const inventory = model.inventory;
@@ -138,6 +312,12 @@ export function runSelfCheck(model: ProjectModel): SelfCheckSummary {
     const kinds = sourceKindsForBehavior(behavior, inventory, inventoryBehaviors);
     for (const rule of selfCheckPolicy?.riskyKindMinimumFidelity ?? []) {
       maybeAddRiskyKindFidelityIssue(issues, model, behavior, kinds, rule);
+    }
+    for (const rule of selfCheckPolicy?.kindExpectationRules ?? []) {
+      maybeAddKindExpectationIssues(issues, behavior, kinds, rule);
+    }
+    for (const rule of selfCheckPolicy?.fidelityOwnerTestRules ?? []) {
+      maybeAddOwnerTestPatternIssue(issues, model, behavior, kinds, rule);
     }
 
     for (const ownerTest of behavior.ownerTests ?? []) {

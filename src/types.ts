@@ -298,6 +298,20 @@ export interface RiskyKindFidelityRule {
   level?: "error" | "warning";
 }
 
+export interface KindBehaviorExpectationRule {
+  kindPattern: string;
+  requiredOutcomeClasses?: string[];
+  requiredEvidence?: string[];
+  level?: "error" | "warning";
+}
+
+export interface FidelityOwnerTestRule {
+  minimumFidelity: string;
+  requireOwnerTestPatterns: string[];
+  kindPattern?: string;
+  level?: "error" | "warning";
+}
+
 export interface RuntimeSelfCheckPolicy {
   $schema?: string;
   version: string;
@@ -307,6 +321,8 @@ export interface RuntimeSelfCheckPolicy {
   maxBehaviorsPerOwnerTest?: number;
   maxOwnerTestsPerBehavior?: number;
   riskyKindMinimumFidelity?: RiskyKindFidelityRule[];
+  kindExpectationRules?: KindBehaviorExpectationRule[];
+  fidelityOwnerTestRules?: FidelityOwnerTestRule[];
 }
 
 export interface SelfCheckIssue {
@@ -391,6 +407,21 @@ export interface RuntimeRetrospectiveSummary {
   issues: RuntimeRetrospectiveIssue[];
 }
 
+export interface RuntimeDoctorIssue {
+  level: "error" | "warning";
+  code: string;
+  message: string;
+}
+
+export interface RuntimeDoctorSummary {
+  requestedPackageSpec?: string;
+  lockfilePackageSpec?: string;
+  installedPackageVersion?: string;
+  installedPackagePath?: string;
+  controlArtifactsChecked: number;
+  issues: RuntimeDoctorIssue[];
+}
+
 export interface RuntimeActorRole {
   id: string;
   responsibility: string;
@@ -415,7 +446,13 @@ export interface ArtifactPathMap {
   retrospectiveLogPath?: string;
 }
 
-export type AgentCommandId = "review" | "impact" | "self-check" | "retro" | "validate";
+export type AgentCommandId =
+  | "review"
+  | "impact"
+  | "self-check"
+  | "retro"
+  | "doctor"
+  | "validate";
 
 export interface AgentCommand {
   id: AgentCommandId;

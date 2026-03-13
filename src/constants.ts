@@ -14,4 +14,6 @@ export const DEFAULT_SELF_CHECK_MD_PATH = "testops/runtime-self-check.report.md"
 export const DEFAULT_RETROSPECTIVE_PATH = "testops/runtime-retrospective.json";
 export const DEFAULT_RETROSPECTIVE_JSON_PATH = "testops/runtime-retrospective.report.json";
 export const DEFAULT_RETROSPECTIVE_MD_PATH = "testops/runtime-retrospective.report.md";
+export const DEFAULT_DOCTOR_JSON_PATH = "testops/runtime-doctor.report.json";
+export const DEFAULT_DOCTOR_MD_PATH = "testops/runtime-doctor.report.md";
 export const DEFAULT_AGENT_CONTRACT_PATH = "testops/runtime-agent-contract.json";

@@ -10,6 +10,7 @@ import {
   generateReviewBacklog,
   generateVitestWorkspace,
   initWorkspace,
+  runDoctor,
   runSelfCheck,
   scanRuntimeInventory,
   validateControlPlane,
@@ -156,6 +157,8 @@ function makeSelfCheckPolicy(): RuntimeSelfCheckPolicy {
     requireExplicitBehaviorMappings: true,
     maxBehaviorsPerOwnerTest: 2,
     maxOwnerTestsPerBehavior: 2,
+    kindExpectationRules: [],
+    fidelityOwnerTestRules: [],
     riskyKindMinimumFidelity: [
       {
         kindPattern: "request",
@@ -818,6 +821,63 @@ describe("runSelfCheck", () => {
       ]),
     );
   });
+
+  it("reports missing kind-level outcomes, evidence, and proof-pattern mismatches", () => {
+    const controlPlane = makeControlPlane();
+    const summary = runSelfCheck({
+      controlPlane: {
+        ...controlPlane,
+        behaviors: [
+          {
+            ...controlPlane.obligations[0],
+            fidelity: "real-dependency",
+            ownerTests: ["test/entry.unit.test.ts"],
+            evidence: ["response"],
+            outcomeClasses: ["success"],
+          },
+        ],
+        obligations: undefined,
+      },
+      inventory: makeInventory(),
+      selfCheckPolicy: {
+        ...makeSelfCheckPolicy(),
+        riskyKindMinimumFidelity: [],
+        kindExpectationRules: [
+          {
+            kindPattern: "^request$",
+            requiredOutcomeClasses: ["success", "failure"],
+            requiredEvidence: ["response", "state_transition"],
+            level: "error",
+          },
+        ],
+        fidelityOwnerTestRules: [
+          {
+            minimumFidelity: "real-dependency",
+            kindPattern: "^request$",
+            requireOwnerTestPatterns: ["\\.integration\\.", "persistence\\.integration"],
+            level: "error",
+          },
+        ],
+      },
+    });
+
+    expect(summary.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          level: "error",
+          code: "missing-kind-outcome-class",
+        }),
+        expect.objectContaining({
+          level: "error",
+          code: "missing-kind-evidence",
+        }),
+        expect.objectContaining({
+          level: "error",
+          code: "owner-test-pattern-mismatch",
+        }),
+      ]),
+    );
+  });
 });
 
 describe("analyzeRetrospective", () => {
@@ -982,6 +1042,7 @@ describe("buildRuntimeAgentContract", () => {
       "impact",
       "self-check",
       "retro",
+      "doctor",
       "validate",
     ]);
     expect(contract.mandatoryLoop).toContain("rerun validate before considering the change complete");
@@ -1007,6 +1068,7 @@ describe("buildRuntimeAgentContract", () => {
         impact: "npm run test:impact -- --changed <path>",
         "self-check": "npm run test:self-check",
         retro: "npm run test:retro",
+        doctor: "npm run test:doctor",
         validate: "npm run test:control",
       },
     });
@@ -1029,10 +1091,140 @@ describe("buildRuntimeAgentContract", () => {
         command: "npm run test:retro",
       }),
       expect.objectContaining({
+        id: "doctor",
+        command: "npm run test:doctor",
+      }),
+      expect.objectContaining({
         id: "validate",
         command: "npm run test:control",
       }),
     ]);
+  });
+});
+
+describe("runDoctor", () => {
+  it("passes when installed package wiring and runtime artifacts are aligned", () => {
+    const root = makeTempDir();
+    writeProjectFile(
+      root,
+      "package.json",
+      JSON.stringify(
+        {
+          name: "doctor-pass",
+          devDependencies: {
+            "runtime-obligation-testops": "github:philo-kim/runtime-obligation-testops#abc123",
+          },
+        },
+        null,
+        2,
+      ) + "\n",
+    );
+    writeProjectFile(
+      root,
+      "package-lock.json",
+      JSON.stringify(
+        {
+          packages: {
+            "node_modules/runtime-obligation-testops": {
+              version: "1.2.3",
+              resolved: "git+ssh://git@github.com/philo-kim/runtime-obligation-testops.git#abc123",
+            },
+          },
+        },
+        null,
+        2,
+      ) + "\n",
+    );
+    writeProjectFile(
+      root,
+      "node_modules/runtime-obligation-testops/package.json",
+      JSON.stringify({ version: "1.2.3" }, null, 2) + "\n",
+    );
+    for (const file of [
+      "testops/runtime-control-plane.json",
+      "testops/runtime-inventory.json",
+      "testops/runtime-surfaces.json",
+      "testops/fidelity-policy.json",
+      "testops/runtime-quality-policy.json",
+      "testops/runtime-discovery-policy.json",
+      "testops/runtime-self-check-policy.json",
+      "testops/runtime-retrospective.json",
+    ]) {
+      writeProjectFile(root, file, "{}\n");
+    }
+
+    const summary = runDoctor(root, {
+      controlPlanePath: "testops/runtime-control-plane.json",
+      inventoryPath: "testops/runtime-inventory.json",
+      surfaceCatalogPath: "testops/runtime-surfaces.json",
+      fidelityPolicyPath: "testops/fidelity-policy.json",
+      qualityPolicyPath: "testops/runtime-quality-policy.json",
+      discoveryPolicyPath: "testops/runtime-discovery-policy.json",
+      selfCheckPolicyPath: "testops/runtime-self-check-policy.json",
+      retrospectiveLogPath: "testops/runtime-retrospective.json",
+    });
+
+    expect(summary.issues).toEqual([]);
+    expect(summary.installedPackageVersion).toBe("1.2.3");
+  });
+
+  it("fails when installed package wiring or runtime artifacts drift", () => {
+    const root = makeTempDir();
+    writeProjectFile(
+      root,
+      "package.json",
+      JSON.stringify(
+        {
+          name: "doctor-fail",
+          devDependencies: {
+            "runtime-obligation-testops": "github:philo-kim/runtime-obligation-testops#target-ref",
+          },
+        },
+        null,
+        2,
+      ) + "\n",
+    );
+    writeProjectFile(
+      root,
+      "package-lock.json",
+      JSON.stringify(
+        {
+          packages: {
+            "node_modules/runtime-obligation-testops": {
+              version: "0.9.0",
+              resolved: "git+ssh://git@github.com/philo-kim/runtime-obligation-testops.git#old-ref",
+            },
+          },
+        },
+        null,
+        2,
+      ) + "\n",
+    );
+    writeProjectFile(
+      root,
+      "node_modules/runtime-obligation-testops/package.json",
+      JSON.stringify({ version: "0.8.0" }, null, 2) + "\n",
+    );
+    writeProjectFile(root, "testops/runtime-control-plane.json", "{}\n");
+
+    const summary = runDoctor(root, {
+      controlPlanePath: "testops/runtime-control-plane.json",
+      inventoryPath: "testops/runtime-inventory.json",
+      surfaceCatalogPath: "testops/runtime-surfaces.json",
+      fidelityPolicyPath: "testops/fidelity-policy.json",
+      qualityPolicyPath: "testops/runtime-quality-policy.json",
+      discoveryPolicyPath: "testops/runtime-discovery-policy.json",
+      selfCheckPolicyPath: "testops/runtime-self-check-policy.json",
+      retrospectiveLogPath: "testops/runtime-retrospective.json",
+    });
+
+    expect(summary.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "package-ref-mismatch", level: "error" }),
+        expect.objectContaining({ code: "package-version-mismatch", level: "error" }),
+        expect.objectContaining({ code: "missing-artifact", level: "error" }),
+      ]),
+    );
   });
 });
 

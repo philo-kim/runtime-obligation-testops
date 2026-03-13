@@ -12,5 +12,7 @@
       "minimumFidelity": "real-dependency",
       "level": "warning"
     }
-  ]
+  ],
+  "kindExpectationRules": [],
+  "fidelityOwnerTestRules": []
 }

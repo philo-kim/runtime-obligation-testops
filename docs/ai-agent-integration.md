@@ -36,16 +36,17 @@ For every runtime change:
 1. identify the changed runtime source
 2. run `rotops impact` if the blast radius is unclear
 3. compare the change against discovered runtime candidates
-4. run `rotops review` when candidate drift may have changed
-5. review repo-local policy if discovery is too noisy or too blind for that runtime slice
-6. run `rotops self-check` to question whether the reviewed model has become too implicit or too broad
-7. check whether the reviewed model is still granular enough under the quality policy
-8. determine whether the reviewed denominator changed
-9. determine which surface owns the change
-10. update or add reviewed behaviors or implemented behavior units
-11. update owner tests and `runtime-behaviors` annotations
-12. if a real miss escaped, record it in `runtime-retrospective.json` and rerun `rotops retro`
-13. rerun `rotops validate`
+4. run `rotops doctor` so the installed package and runtime artifacts are known-good before trusting completeness output
+5. run `rotops review` when candidate drift may have changed
+6. review repo-local policy if discovery is too noisy or too blind for that runtime slice
+7. run `rotops self-check` to question whether the reviewed model has become too implicit or too broad
+8. check whether the reviewed model is still granular enough under the quality policy
+9. determine whether the reviewed denominator changed
+10. determine which surface owns the change
+11. update or add reviewed behaviors or implemented behavior units
+12. update owner tests and `runtime-behaviors` annotations
+13. if a real miss escaped, record it in `runtime-retrospective.json` and rerun `rotops retro`
+14. rerun `rotops validate`
 
 If discovery finds a candidate the reviewed model does not account for, the agent must not hide it by editing tests alone.
 The agent must either:
