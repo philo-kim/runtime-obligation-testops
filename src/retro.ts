@@ -3,6 +3,7 @@ import type {
   RetrospectiveRootCause,
   RuntimeRetrospectiveIssue,
   RuntimeRetrospectiveLog,
+  RuntimeRetrospectiveEntry,
   RuntimeRetrospectiveSummary,
 } from "./types.js";
 
@@ -14,6 +15,23 @@ function getInventoryBehaviorIds(model: ProjectModel): Set<string> {
   return new Set((model.inventory?.behaviors ?? []).map((behavior) => behavior.id));
 }
 
+interface LegacyRetrospectiveEntryCompat extends Partial<RuntimeRetrospectiveEntry> {
+  rootCause?: RetrospectiveRootCause;
+  behaviorIds?: string[];
+}
+
+function normalizeStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((entry): entry is string => typeof entry === "string");
+  }
+
+  if (typeof value === "string") {
+    return [value];
+  }
+
+  return [];
+}
+
 export function analyzeRetrospective(model: ProjectModel): RuntimeRetrospectiveSummary {
   const retrospective = model.retrospectiveLog ?? {
     version: model.controlPlane.version,
@@ -23,13 +41,41 @@ export function analyzeRetrospective(model: ProjectModel): RuntimeRetrospectiveS
 
   const issues: RuntimeRetrospectiveIssue[] = [];
   const behaviorIds = getBehaviorIds(model);
-  const inventoryBehaviorIds = getInventoryBehaviorIds(model);
+  const knownInventoryBehaviorIds = getInventoryBehaviorIds(model);
   const recurring = new Map<RetrospectiveRootCause, number>();
   let openEntries = 0;
   let hardenedEntries = 0;
   let closedEntries = 0;
 
   for (const entry of retrospective.entries) {
+    const compatEntry = entry as LegacyRetrospectiveEntryCompat;
+    const rootCauses = Array.isArray(compatEntry.rootCauses)
+      ? compatEntry.rootCauses
+      : typeof compatEntry.rootCause === "string"
+        ? [compatEntry.rootCause]
+        : [];
+    const entryInventoryBehaviorIds = normalizeStringArray(compatEntry.inventoryBehaviorIds);
+    const behaviorUnitIds = Array.isArray(compatEntry.behaviorUnitIds)
+      ? compatEntry.behaviorUnitIds
+      : normalizeStringArray(compatEntry.behaviorIds);
+    const actions = normalizeStringArray(compatEntry.actions);
+
+    if (!Array.isArray(compatEntry.rootCauses)) {
+      issues.push({
+        level: "warning",
+        entryId: entry.id,
+        message: `Retrospective entry ${entry.id} does not declare rootCauses as an array. Normalize the entry to the current schema so future hardening remains reviewable.`,
+      });
+    }
+
+    if (!Array.isArray(compatEntry.behaviorUnitIds) && Array.isArray(compatEntry.behaviorIds)) {
+      issues.push({
+        level: "warning",
+        entryId: entry.id,
+        message: `Retrospective entry ${entry.id} still uses legacy behaviorIds. Rename it to behaviorUnitIds in the reviewed log.`,
+      });
+    }
+
     if (entry.status === "open") {
       openEntries += 1;
       issues.push({
@@ -43,7 +89,7 @@ export function analyzeRetrospective(model: ProjectModel): RuntimeRetrospectiveS
       closedEntries += 1;
     }
 
-    if (!entry.actions || entry.actions.length === 0) {
+    if (actions.length === 0) {
       issues.push({
         level: "warning",
         entryId: entry.id,
@@ -51,8 +97,8 @@ export function analyzeRetrospective(model: ProjectModel): RuntimeRetrospectiveS
       });
     }
 
-    for (const inventoryBehaviorId of entry.inventoryBehaviorIds ?? []) {
-      if (!inventoryBehaviorIds.has(inventoryBehaviorId)) {
+    for (const inventoryBehaviorId of entryInventoryBehaviorIds) {
+      if (!knownInventoryBehaviorIds.has(inventoryBehaviorId)) {
         issues.push({
           level: "error",
           entryId: entry.id,
@@ -61,7 +107,7 @@ export function analyzeRetrospective(model: ProjectModel): RuntimeRetrospectiveS
       }
     }
 
-    for (const behaviorId of entry.behaviorUnitIds ?? []) {
+    for (const behaviorId of behaviorUnitIds) {
       if (!behaviorIds.has(behaviorId)) {
         issues.push({
           level: "error",
@@ -71,7 +117,7 @@ export function analyzeRetrospective(model: ProjectModel): RuntimeRetrospectiveS
       }
     }
 
-    for (const rootCause of entry.rootCauses) {
+    for (const rootCause of rootCauses) {
       recurring.set(rootCause, (recurring.get(rootCause) ?? 0) + 1);
     }
   }

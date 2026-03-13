@@ -888,6 +888,54 @@ describe("analyzeRetrospective", () => {
       ]),
     );
   });
+
+  it("does not crash on legacy or malformed retrospective entry shapes", () => {
+    const summary = analyzeRetrospective({
+      controlPlane: {
+        ...makeControlPlane(),
+        behaviors: makeControlPlane().obligations,
+        obligations: undefined,
+      },
+      inventory: makeInventory(),
+      retrospectiveLog: {
+        ...makeRetrospectiveLog(),
+        entries: [
+          {
+            id: "retro-legacy",
+            title: "Legacy retrospective format",
+            summary: "Older entry uses singular rootCause and behaviorIds.",
+            detectedBy: "agent",
+            status: "open",
+            rootCause: "missing-reviewed-behavior",
+            inventoryBehaviorIds: ["request-entry.behavior"],
+            behaviorIds: ["request-entry.success"],
+            actions: ["Split the reviewed behavior further."],
+          } as unknown as RuntimeRetrospectiveLog["entries"][number],
+        ],
+      },
+    });
+
+    expect(summary.openEntries).toBe(1);
+    expect(summary.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          level: "error",
+          entryId: "retro-legacy",
+          message: expect.stringContaining("still open"),
+        }),
+        expect.objectContaining({
+          level: "warning",
+          entryId: "retro-legacy",
+          message: expect.stringContaining("rootCauses as an array"),
+        }),
+        expect.objectContaining({
+          level: "warning",
+          entryId: "retro-legacy",
+          message: expect.stringContaining("legacy behaviorIds"),
+        }),
+      ]),
+    );
+  });
 });
 
 describe("buildRuntimeAgentContract", () => {
